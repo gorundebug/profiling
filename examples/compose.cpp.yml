@@ -1,0 +1,18 @@
+services:
+  inventoryservice:
+    command:
+      - --config
+      - /profiling-config/inventoryservice.static_config.yaml
+      - --config_vars
+      - /profiling-config/inventoryservice.config_vars.yaml
+    volumes:
+      - ${PROFILING_CPP_CONFIG_DIR}:/profiling-config:ro
+
+  orderservice:
+    command:
+      - --config
+      - /profiling-config/orderservice.static_config.yaml
+      - --config_vars
+      - /profiling-config/orderservice.config_vars.yaml
+    volumes:
+      - ${PROFILING_CPP_CONFIG_DIR}:/profiling-config:ro

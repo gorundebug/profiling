@@ -1,0 +1,11 @@
+services:
+  analyticsservice: !reset null
+  profiler-analytics: !reset null
+
+  inventoryservice:
+    environment:
+      GOMAXPROCS: ${PROFILING_SERVICE_CORES}
+
+  orderservice:
+    environment:
+      GOMAXPROCS: ${PROFILING_SERVICE_CORES}

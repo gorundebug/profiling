@@ -1,0 +1,74 @@
+name: TypeScript profiling artifacts
+
+on:
+  workflow_dispatch:
+    inputs:
+      duration:
+        description: Measured duration for each service profile
+        required: false
+        default: 20s
+      vus:
+        description: Virtual users
+        required: false
+        default: "256"
+
+jobs:
+  profile:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - name: Fetch the current TypeScript inputs
+        run: |
+          mkdir -p .dependencies
+          for repository in tsexample tsnativeexample tsservicelib; do
+            git clone --depth 1 "https://github.com/gorundebug/${repository}.git" ".dependencies/${repository}"
+          done
+          (cd .dependencies/tsexample && bash clone.generated.sh)
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.19.0
+          cache: pnpm
+          cache-dependency-path: |
+            .dependencies/tsservicelib/pnpm-lock.yaml
+            .dependencies/tsnativeexample/pnpm-lock.yaml
+      - name: Enable the pinned package manager
+        run: corepack enable && corepack prepare pnpm@11.18.0 --activate
+      - name: Run framework clean-machine gates
+        working-directory: .dependencies/tsservicelib
+        run: |
+          corepack pnpm install --frozen-lockfile
+          corepack pnpm build
+          corepack pnpm check:package
+          corepack pnpm test:coverage
+          corepack pnpm test:event-loop-stress
+      - name: Run native clean-machine gates
+        working-directory: .dependencies/tsnativeexample
+        run: |
+          corepack pnpm install --frozen-lockfile
+          corepack pnpm check
+          corepack pnpm test:coverage
+          corepack pnpm test:event-loop-stress
+          corepack pnpm test:diagnostics
+      - name: Capture framework and native CPU and heap profiles
+        env:
+          PROFILING_DEPENDENCIES_DIR: ${{ github.workspace }}/.dependencies
+        run: |
+          python3 examples/run.py \
+            --language typescript \
+            --language typescript-native \
+            --cores 2 \
+            --loadgen-cores 6 \
+            --vus "${{ inputs.vus }}" \
+            --duration "${{ inputs.duration }}" \
+            --warmup 5s \
+            --profile-kind cpu \
+            --profile-kind allocation
+      - name: Upload reproducible profiling evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: typescript-profiling-${{ github.run_id }}
+          path: .artifacts
+          if-no-files-found: error
+          retention-days: 30

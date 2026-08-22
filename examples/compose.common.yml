@@ -1,0 +1,130 @@
+services:
+  inventoryservice:
+    cpus: ${PROFILING_SERVICE_CORES}
+    environment:
+      LD_PRELOAD: ${PROFILING_LD_PRELOAD:-}
+      SERVICELIB_ALLOCATION_PROFILE_PATH: /profiling-results/${PROFILING_ALLOCATION_INVENTORY_FILE:-allocation-disabled.bin}
+      SERVICELIB_ALLOCATION_STACK_PATH: /profiling-results/${PROFILING_ALLOCATION_STACK_INVENTORY_FILE:-allocation-stacks-disabled.bin}
+      SERVICELIB_ALLOCATION_STACK_SAMPLE_EVERY: ${PROFILING_ALLOCATION_STACK_SAMPLE_EVERY:-0}
+      SERVICELIB_NOOP_METRICS: "1"
+      SERVICELIB_NOOP_TRACING: "1"
+      DEFAULT_POOL_EXECUTORS_COUNT: ${PROFILING_SERVICE_CORES}
+      INVENTORY_PRIORITY_WORKERS_EXECUTORS_COUNT: ${PROFILING_SERVICE_CORES}
+    ports: !override
+      - "9092:9092"
+    volumes:
+      - ${PROFILING_ALLOCATOR_LIBRARY}:/profiling-tools/liballocation_profile.so:ro
+      - ${PROFILING_ARTIFACTS_DIR}:/profiling-results
+    restart: "no"
+
+  orderservice:
+    cpus: ${PROFILING_SERVICE_CORES}
+    environment:
+      LD_PRELOAD: ${PROFILING_LD_PRELOAD:-}
+      SERVICELIB_ALLOCATION_PROFILE_PATH: /profiling-results/${PROFILING_ALLOCATION_ORDER_FILE:-allocation-disabled.bin}
+      SERVICELIB_ALLOCATION_STACK_PATH: /profiling-results/${PROFILING_ALLOCATION_STACK_ORDER_FILE:-allocation-stacks-disabled.bin}
+      SERVICELIB_ALLOCATION_STACK_SAMPLE_EVERY: ${PROFILING_ALLOCATION_STACK_SAMPLE_EVERY:-0}
+      SERVICELIB_NOOP_METRICS: "1"
+      SERVICELIB_NOOP_TRACING: "1"
+      DEFAULT_POOL_EXECUTORS_COUNT: ${PROFILING_SERVICE_CORES}
+      INVENTORY_PRIORITY_WORKERS_EXECUTORS_COUNT: ${PROFILING_SERVICE_CORES}
+      INVENTORY_SERVICE_API_CONNECTIONS_COUNT: ${PROFILING_SERVICE_CORES}
+    ports: !override
+      - "9091:9091"
+    volumes:
+      - ${PROFILING_ALLOCATOR_LIBRARY}:/profiling-tools/liballocation_profile.so:ro
+      - ${PROFILING_ARTIFACTS_DIR}:/profiling-results
+    restart: "no"
+
+  analyticsservice:
+    cpus: ${PROFILING_SERVICE_CORES}
+    environment:
+      SERVICELIB_NOOP_METRICS: "1"
+      SERVICELIB_NOOP_TRACING: "1"
+      DEFAULT_POOL_EXECUTORS_COUNT: ${PROFILING_SERVICE_CORES}
+      ORDER_PROCESSED_ENABLED: ${PROFILING_ORDER_PROCESSED_ENABLED:-false}
+    ports: !override
+      - "9093:9093"
+    volumes:
+      - ${PROFILING_ARTIFACTS_DIR}:/profiling-results
+    restart: "no"
+
+  profiler:
+    image: servicelib-profiler:latest
+    pid: "service:orderservice"
+    cap_add:
+      - SYS_PTRACE
+      - SYS_ADMIN
+    security_opt:
+      - seccomp:unconfined
+    profiles: [profiling]
+    environment:
+      PROFILING_PYSPY_RATE: ${PROFILING_PYSPY_RATE:-10}
+      PROFILING_PYSPY_TIMEOUT: ${PROFILING_PYSPY_TIMEOUT:-}
+    volumes:
+      - ${PROFILING_ARTIFACTS_DIR}:/results
+    networks:
+      - app_net
+
+  profiler-inventory:
+    image: servicelib-profiler:latest
+    pid: "service:inventoryservice"
+    cap_add:
+      - SYS_PTRACE
+      - SYS_ADMIN
+    security_opt:
+      - seccomp:unconfined
+    profiles: [profiling]
+    environment:
+      PROFILING_PYSPY_RATE: ${PROFILING_PYSPY_RATE:-10}
+      PROFILING_PYSPY_TIMEOUT: ${PROFILING_PYSPY_TIMEOUT:-}
+    volumes:
+      - ${PROFILING_ARTIFACTS_DIR}:/results
+    networks:
+      - app_net
+
+  profiler-analytics:
+    image: servicelib-profiler:latest
+    pid: "service:analyticsservice"
+    cap_add:
+      - SYS_PTRACE
+      - SYS_ADMIN
+    security_opt:
+      - seccomp:unconfined
+    profiles: [profiling]
+    volumes:
+      - ${PROFILING_ARTIFACTS_DIR}:/results
+    networks:
+      - app_net
+
+  loadgen:
+    image: grafana/k6:0.55.2
+    cpus: ${PROFILING_LOADGEN_CORES}
+    user: "0:0"
+    profiles: [profiling]
+    environment:
+      BENCHMARK_BUILD_TYPE: Release
+      BENCHMARK_DURATION: ${PROFILING_DURATION}
+      BENCHMARK_EXPECTED_BUSINESS_STATUS: ${PROFILING_EXPECTED_BUSINESS_STATUS:-}
+      BENCHMARK_EXPECTED_OUTCOME: ${PROFILING_EXPECTED_OUTCOME:-success}
+      BENCHMARK_EXPECTED_STATUS: ${PROFILING_EXPECTED_STATUS:-200}
+      BENCHMARK_GRACEFUL_STOP: ${PROFILING_GRACEFUL_STOP:-5s}
+      BENCHMARK_LOADGEN_CORES: ${PROFILING_LOADGEN_CORES}
+      BENCHMARK_MAX_VUS: ${PROFILING_MAX_VUS:-4096}
+      BENCHMARK_METHOD: ${PROFILING_METHOD:-POST}
+      BENCHMARK_MODE: ${PROFILING_MODE:-closed}
+      BENCHMARK_PRE_ALLOCATED_VUS: ${PROFILING_PRE_ALLOCATED_VUS:-128}
+      BENCHMARK_RESULT_FILE: ${PROFILING_RESULT_FILE}
+      BENCHMARK_REQUEST_TIMEOUT: ${PROFILING_REQUEST_TIMEOUT:-60s}
+      BENCHMARK_RATE: ${PROFILING_RATE:-0}
+      BENCHMARK_SCENARIO: ${PROFILING_SCENARIO:-process_order_out_of_stock}
+      BENCHMARK_SERVICE_CORES: ${PROFILING_SERVICE_CORES}
+      BENCHMARK_TARGET: ${PROFILING_TARGET:-http://orderservice:9091/v1/processorder}
+      BENCHMARK_VUS: ${PROFILING_VUS}
+    volumes:
+      - ${PROFILING_DIR}/load.js:/scripts/load.js:ro
+      - ${PROFILING_ARTIFACTS_DIR}:/results
+    networks:
+      - app_net
+    entrypoint: [k6]
+    command: [run, --log-output, none, /scripts/load.js]

@@ -1,0 +1,11 @@
+services:
+  analyticsservice: !reset null
+  profiler-analytics: !reset null
+
+  inventoryservice:
+    environment:
+      TOKIO_WORKER_THREADS: ${PROFILING_SERVICE_CORES}
+
+  orderservice:
+    environment:
+      TOKIO_WORKER_THREADS: ${PROFILING_SERVICE_CORES}

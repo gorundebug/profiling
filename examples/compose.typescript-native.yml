@@ -1,0 +1,15 @@
+services:
+  analyticsservice:
+    environment:
+      NODE_OPTIONS: "--inspect=0.0.0.0:9229 --enable-source-maps"
+      ORDER_PROCESSED_ENABLED: ${PROFILING_ORDER_PROCESSED_ENABLED:-false}
+
+  inventoryservice:
+    environment:
+      NODE_OPTIONS: "--inspect=0.0.0.0:9229 --enable-source-maps"
+
+  orderservice:
+    environment:
+      INVENTORY_SERVICE_API_CONNECTIONS_COUNT: ${PROFILING_SERVICE_CORES}
+      NODE_OPTIONS: "--inspect=0.0.0.0:9229 --enable-source-maps"
+      ORDER_PROCESSED_ENABLED: ${PROFILING_ORDER_PROCESSED_ENABLED:-false}

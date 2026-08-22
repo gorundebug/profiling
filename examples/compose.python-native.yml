@@ -1,0 +1,11 @@
+services:
+  analyticsservice: !reset null
+  profiler-analytics: !reset null
+
+  inventoryservice:
+    environment:
+      PYTHONOPTIMIZE: "2"
+
+  orderservice:
+    environment:
+      PYTHONOPTIMIZE: "2"

@@ -1,0 +1,4 @@
+.dependencies/
+**/.artifacts/
+__pycache__/
+*.pyc

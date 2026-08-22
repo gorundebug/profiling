@@ -1,0 +1,7 @@
+services:
+  # The native Boost fixture intentionally contains only Inventory and Order.
+  # Remove the optional framework Analytics target inherited from the common
+  # profiling layer so Compose can validate this independent two-service
+  # project even when the Kafka scenario is disabled.
+  analyticsservice: !reset null
+  profiler-analytics: !reset null

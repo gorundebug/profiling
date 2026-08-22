@@ -1,0 +1,11 @@
+services:
+  inventoryservice:
+    environment:
+      GOMAXPROCS: ${PROFILING_SERVICE_CORES}
+      DEBUG: "0"
+
+  orderservice:
+    environment:
+      GOMAXPROCS: ${PROFILING_SERVICE_CORES}
+      DEBUG: "0"
+      ORDER_PROCESSED_ENABLED: "false"

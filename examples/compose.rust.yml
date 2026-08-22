@@ -1,0 +1,14 @@
+services:
+  inventoryservice:
+    environment:
+      RUST_LOG: error
+      SERVICELIB_ENVIRONMENT: ""
+      TOKIO_WORKER_THREADS: ${PROFILING_SERVICE_CORES}
+
+  orderservice:
+    environment:
+      INVENTORY_SERVICE_API_ADDRESS: http://inventoryservice:9202
+      ORDER_PROCESSED_ENABLED: "false"
+      RUST_LOG: error
+      SERVICELIB_ENVIRONMENT: ""
+      TOKIO_WORKER_THREADS: ${PROFILING_SERVICE_CORES}

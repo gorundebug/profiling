@@ -1,0 +1,34 @@
+FROM debian:bookworm-slim AS allocation-builder
+
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends gcc libc6-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY allocation_profile.c /src/allocation_profile.c
+RUN gcc -std=c11 -O2 -fPIC -shared -Wall -Wextra -Werror \
+    /src/allocation_profile.c -ldl -o /liballocation_profile.so
+
+FROM debian:bookworm-slim
+
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends \
+       binutils linux-perf procps perl git python3-pip ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN git clone --depth 1 https://github.com/brendangregg/FlameGraph.git /opt/FlameGraph
+
+RUN pip3 install --break-system-packages --no-cache-dir \
+    py-spy websocket-client==1.9.0 sourcemap==0.2.1
+
+COPY profile.sh /usr/local/bin/profile.sh
+COPY analyze_folded.py /usr/local/bin/analyze_folded.py
+COPY analyze_allocation_stacks.py /usr/local/bin/analyze_allocation_stacks.py
+COPY scheduler_profile.py /usr/local/bin/scheduler_profile.py
+COPY node_inspector_profile.py /usr/local/bin/node_inspector_profile.py
+COPY --from=allocation-builder /liballocation_profile.so /usr/local/lib/liballocation_profile.so
+RUN chmod +x /usr/local/bin/profile.sh /usr/local/bin/analyze_folded.py \
+    /usr/local/bin/analyze_allocation_stacks.py \
+    /usr/local/bin/scheduler_profile.py \
+    /usr/local/bin/node_inspector_profile.py
+
+ENTRYPOINT ["/usr/local/bin/profile.sh"]

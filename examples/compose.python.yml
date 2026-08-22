@@ -1,0 +1,38 @@
+services:
+  inventoryservice:
+    entrypoint:
+      - python
+      - -OO
+      - /profiling/python_entrypoint.py
+      - inventory_service.main
+    command:
+      - --config
+      - /workspace/config/config.yaml
+      - --overrides
+      - /profiling-python-config/inventoryservice.overrides.yaml
+    environment:
+      PYTHONASYNCIODEBUG: ""
+      PYTHONHASHSEED: "0"
+      PYTHONOPTIMIZE: "2"
+    volumes:
+      - ${PROFILING_DIR}/python_entrypoint.py:/profiling/python_entrypoint.py:ro
+      - ${PROFILING_PYTHON_CONFIG_DIR}:/profiling-python-config:ro
+
+  orderservice:
+    entrypoint:
+      - python
+      - -OO
+      - /profiling/python_entrypoint.py
+      - order_service.main
+    command:
+      - --config
+      - /workspace/config/config.yaml
+      - --overrides
+      - /profiling-python-config/orderservice.overrides.yaml
+    environment:
+      PYTHONASYNCIODEBUG: ""
+      PYTHONHASHSEED: "0"
+      PYTHONOPTIMIZE: "2"
+    volumes:
+      - ${PROFILING_DIR}/python_entrypoint.py:/profiling/python_entrypoint.py:ro
+      - ${PROFILING_PYTHON_CONFIG_DIR}:/profiling-python-config:ro

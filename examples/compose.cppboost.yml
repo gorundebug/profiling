@@ -1,0 +1,53 @@
+services:
+  inventoryservice:
+    environment: !override
+      - DEBUG=${INVENTORY_SERVICE_DEBUG:-0}
+      - GRPC_EXPERIMENTS
+      - INVENTORY_SERVICE_HTTP_HOST=0.0.0.0
+      - INVENTORY_SERVICE_GRPC_HOST=0.0.0.0
+      - DEFAULT_POOL_EXECUTORS_COUNT=${PROFILING_SERVICE_CORES}
+      - INVENTORY_PRIORITY_WORKERS_EXECUTORS_COUNT=${PROFILING_SERVICE_CORES}
+      - LD_PRELOAD=${PROFILING_LD_PRELOAD:-}
+      - SERVICELIB_ALLOCATION_PROFILE_PATH=/profiling-results/${PROFILING_ALLOCATION_INVENTORY_FILE:-allocation-disabled.bin}
+      - SERVICELIB_ALLOCATION_STACK_PATH=/profiling-results/${PROFILING_ALLOCATION_STACK_INVENTORY_FILE:-allocation-stacks-disabled.bin}
+      - SERVICELIB_ALLOCATION_STACK_SAMPLE_EVERY=${PROFILING_ALLOCATION_STACK_SAMPLE_EVERY:-0}
+      - SERVICELIB_NOOP_LOGS=1
+      # Pass through only when explicitly exported by a profiling experiment.
+      # Unlike KEY=${KEY:-}, this does not create a present-but-empty variable.
+      - SERVICELIB_NOOP_METRICS
+    command:
+      - --config
+      - /app/config/config.yaml
+      - --values
+      - /profiling-config/inventoryservice.overrides.yaml
+      - --workers
+      - ${PROFILING_SERVICE_CORES}
+    volumes:
+      - ${PROFILING_CPPBOOST_CONFIG_DIR}:/profiling-config:ro
+
+  orderservice:
+    environment: !override
+      - DEBUG=${ORDER_SERVICE_DEBUG:-0}
+      - GRPC_EXPERIMENTS
+      - ORDER_SERVICE_HTTP_HOST=0.0.0.0
+      - ORDER_SERVICE_GRPC_HOST=0.0.0.0
+      - INVENTORY_SERVICE_API_ADDRESS=dns:///inventoryservice:9202
+      - ORDER_PROCESSED_ENABLED=false
+      - DEFAULT_POOL_EXECUTORS_COUNT=${PROFILING_SERVICE_CORES}
+      - INVENTORY_PRIORITY_WORKERS_EXECUTORS_COUNT=${PROFILING_SERVICE_CORES}
+      - INVENTORY_SERVICE_API_CONNECTIONS_COUNT=${PROFILING_SERVICE_CORES}
+      - LD_PRELOAD=${PROFILING_LD_PRELOAD:-}
+      - SERVICELIB_ALLOCATION_PROFILE_PATH=/profiling-results/${PROFILING_ALLOCATION_ORDER_FILE:-allocation-disabled.bin}
+      - SERVICELIB_ALLOCATION_STACK_PATH=/profiling-results/${PROFILING_ALLOCATION_STACK_ORDER_FILE:-allocation-stacks-disabled.bin}
+      - SERVICELIB_ALLOCATION_STACK_SAMPLE_EVERY=${PROFILING_ALLOCATION_STACK_SAMPLE_EVERY:-0}
+      - SERVICELIB_NOOP_LOGS=1
+      - SERVICELIB_NOOP_METRICS
+    command:
+      - --config
+      - /app/config/config.yaml
+      - --values
+      - /profiling-config/orderservice.overrides.yaml
+      - --workers
+      - ${PROFILING_SERVICE_CORES}
+    volumes:
+      - ${PROFILING_CPPBOOST_CONFIG_DIR}:/profiling-config:ro
