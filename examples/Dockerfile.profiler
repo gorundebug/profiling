@@ -1,5 +1,12 @@
 FROM debian:bookworm-slim AS allocation-builder
 
+ARG SERVICEGEN_APT_DEBIAN_URL=
+ARG SERVICEGEN_APT_DEBIAN_SECURITY_URL=
+RUN if [ -n "$SERVICEGEN_APT_DEBIAN_URL$SERVICEGEN_APT_DEBIAN_SECURITY_URL" ]; then \
+      find /etc/apt -type f \( -name '*.list' -o -name '*.sources' \) -exec sed -i \
+        -e "s|http://deb.debian.org/debian-security|$SERVICEGEN_APT_DEBIAN_SECURITY_URL|g" \
+        -e "s|http://deb.debian.org/debian|$SERVICEGEN_APT_DEBIAN_URL|g" {} +; \
+    fi
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends gcc libc6-dev \
     && rm -rf /var/lib/apt/lists/*
@@ -10,12 +17,28 @@ RUN gcc -std=c11 -O2 -fPIC -shared -Wall -Wextra -Werror \
 
 FROM debian:bookworm-slim
 
+ARG SERVICEGEN_APT_DEBIAN_URL=
+ARG SERVICEGEN_APT_DEBIAN_SECURITY_URL=
+ARG SERVICEGEN_GITHUB_RAW_URL=https://github.com
+ARG FLAMEGRAPH_REVISION=41fee1f99f9276008b7cd112fca19dc3ea84ac32
+ARG PIP_INDEX_URL=https://pypi.org/simple
+ENV PIP_INDEX_URL=${PIP_INDEX_URL}
+RUN if [ -n "$SERVICEGEN_APT_DEBIAN_URL$SERVICEGEN_APT_DEBIAN_SECURITY_URL" ]; then \
+      find /etc/apt -type f \( -name '*.list' -o -name '*.sources' \) -exec sed -i \
+        -e "s|http://deb.debian.org/debian-security|$SERVICEGEN_APT_DEBIAN_SECURITY_URL|g" \
+        -e "s|http://deb.debian.org/debian|$SERVICEGEN_APT_DEBIAN_URL|g" {} +; \
+    fi
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends \
-       binutils linux-perf procps perl git python3-pip ca-certificates \
+       binutils linux-perf procps perl git curl python3-pip ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-RUN git clone --depth 1 https://github.com/brendangregg/FlameGraph.git /opt/FlameGraph
+RUN curl --fail --location --silent --show-error \
+      "$SERVICEGEN_GITHUB_RAW_URL/brendangregg/FlameGraph/archive/$FLAMEGRAPH_REVISION.tar.gz" \
+      --output /tmp/flamegraph.tar.gz \
+    && mkdir -p /opt/FlameGraph \
+    && tar -xzf /tmp/flamegraph.tar.gz --strip-components=1 -C /opt/FlameGraph \
+    && rm -f /tmp/flamegraph.tar.gz
 
 RUN pip3 install --break-system-packages --no-cache-dir \
     py-spy websocket-client==1.9.0 sourcemap==0.2.1

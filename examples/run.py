@@ -586,11 +586,31 @@ def write_run_manifest(
 
 
 def build_profiler_image(env: dict[str, str]) -> None:
+    build_args: list[str] = []
+    for name in (
+        "SERVICEGEN_APT_DEBIAN_URL",
+        "SERVICEGEN_APT_DEBIAN_SECURITY_URL",
+        "SERVICEGEN_GITHUB_RAW_URL",
+        "PIP_INDEX_URL",
+    ):
+        if value := docker_build_environment_value(env, name):
+            build_args.extend(["--build-arg", f"{name}={value}"])
     run(
-        ["docker", "build", "-f", "Dockerfile.profiler", "-t", "servicelib-profiler:latest", "."],
+        ["docker", "build", *build_args, "-f", "Dockerfile.profiler", "-t", "servicelib-profiler:latest", "."],
         cwd=PROFILING_DIR,
         env=env,
     )
+
+
+def docker_build_environment_value(env: dict[str, str], name: str) -> str | None:
+    value = env.get(name)
+    if not value or not env.get("SERVICEGEN_DEPENDENCY_PROXY_DIR"):
+        return value
+    host = env.get("SERVICEGEN_DEPENDENCY_PROXY_HOST", "localhost")
+    docker_host = env.get(
+        "SERVICEGEN_DEPENDENCY_PROXY_DOCKER_HOST", "host.docker.internal"
+    )
+    return value.replace(f"://{host}:", f"://{docker_host}:")
 
 
 def extract_profiler_assets(env: dict[str, str]) -> None:

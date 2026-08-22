@@ -137,9 +137,9 @@ make -C .dependencies/goexample SERVICEGEN_NEXUS_ACCEPT_EULA=true dependency-cac
 The quickstart configures host and Docker consumers automatically, including
 Docker Engine on Linux through `host-gateway`. Without the variable it uses
 normal upstreams. The persistent proxy data is shared with benchmarks,
-conformance and generated projects. It caches package registries, not
-profiler/build artifacts, arbitrary Git clones or direct GitHub release
-downloads.
+conformance and generated projects. It caches package registries, Debian/Ubuntu
+APT packages and immutable GitHub/GitLab release archives, not profiler outputs
+or compiler artifacts.
 
 To reuse an existing set of repositories instead of `.dependencies`, pass it
 explicitly:
