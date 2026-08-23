@@ -152,6 +152,13 @@ A direct `make profile` from the common development workspace remains
 supported: when `PROFILING_DEPENDENCIES_DIR` is unset, the profiler looks for
 the example repositories next to the `profiling` checkout.
 
+After changing a pinned C++ dependency version, explicitly discard prepared
+sources and CMake state while keeping ccache and Nexus data:
+
+```bash
+make dependency-source-cache-invalidate
+```
+
 ## Usage
 
 ```bash
