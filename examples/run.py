@@ -587,6 +587,10 @@ def write_run_manifest(
 
 def build_profiler_image(env: dict[str, str]) -> None:
     build_args: list[str] = []
+    if env.get("SERVICEGEN_DEPENDENCY_PROXY_DIR"):
+        build_args.extend([
+            "--add-host", "host.docker.internal:host-gateway",
+        ])
     for name in (
         "SERVICEGEN_APT_DEBIAN_URL",
         "SERVICEGEN_APT_DEBIAN_SECURITY_URL",
