@@ -22,7 +22,9 @@ ARG SERVICEGEN_APT_DEBIAN_SECURITY_URL=
 ARG SERVICEGEN_GITHUB_RAW_URL=https://github.com
 ARG FLAMEGRAPH_REVISION=41fee1f99f9276008b7cd112fca19dc3ea84ac32
 ARG PIP_INDEX_URL=https://pypi.org/simple
+ARG PIP_TRUSTED_HOST=
 ENV PIP_INDEX_URL=${PIP_INDEX_URL}
+ENV PIP_TRUSTED_HOST=${PIP_TRUSTED_HOST}
 RUN if [ -n "$SERVICEGEN_APT_DEBIAN_URL$SERVICEGEN_APT_DEBIAN_SECURITY_URL" ]; then \
       find /etc/apt -type f \( -name '*.list' -o -name '*.sources' \) -exec sed -i \
         -e "s|http://deb.debian.org/debian-security|$SERVICEGEN_APT_DEBIAN_SECURITY_URL|g" \

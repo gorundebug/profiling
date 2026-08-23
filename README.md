@@ -21,7 +21,7 @@ directly by PID:
   SVG.
 - **Python**: [`py-spy`](https://github.com/benfred/py-spy) samples the
   interpreter directly and writes an SVG flamegraph natively — no
-  perf/collapse step needed. The default rate is 10 Hz to avoid a sampling
+  perf/collapse step needed. The default rate is 5 Hz to avoid a sampling
   backlog under full load; override it with `PROFILING_PYSPY_RATE`.
   Sampling is interrupted if it exceeds the requested duration by 30 seconds;
   override that wall-clock limit with `PROFILING_PYSPY_TIMEOUT`.

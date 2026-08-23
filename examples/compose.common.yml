@@ -59,7 +59,7 @@ services:
       - seccomp:unconfined
     profiles: [profiling]
     environment:
-      PROFILING_PYSPY_RATE: ${PROFILING_PYSPY_RATE:-10}
+      PROFILING_PYSPY_RATE: ${PROFILING_PYSPY_RATE:-5}
       PROFILING_PYSPY_TIMEOUT: ${PROFILING_PYSPY_TIMEOUT:-}
     volumes:
       - ${PROFILING_ARTIFACTS_DIR}:/results
@@ -76,7 +76,7 @@ services:
       - seccomp:unconfined
     profiles: [profiling]
     environment:
-      PROFILING_PYSPY_RATE: ${PROFILING_PYSPY_RATE:-10}
+      PROFILING_PYSPY_RATE: ${PROFILING_PYSPY_RATE:-5}
       PROFILING_PYSPY_TIMEOUT: ${PROFILING_PYSPY_TIMEOUT:-}
     volumes:
       - ${PROFILING_ARTIFACTS_DIR}:/results
