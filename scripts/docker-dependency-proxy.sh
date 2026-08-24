@@ -39,4 +39,10 @@ if [ -n "${SERVICEGEN_DEPENDENCY_PROXY_DIR:-}" ]; then
   export GIT_CONFIG_VALUE_1=https://gitlab.com/
 fi
 
+if [ -n "${SERVICEGEN_DEPENDENCY_PROXY_DIR:-}" ] && [ "${1:-}" = "run" ]; then
+  shift
+  exec "$SERVICEGEN_REAL_DOCKER" run \
+    --add-host "host.docker.internal:host-gateway" "$@"
+fi
+
 exec "$SERVICEGEN_REAL_DOCKER" "$@"
