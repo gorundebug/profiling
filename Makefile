@@ -1,7 +1,13 @@
-.PHONY: profile test clean dependency-source-cache-invalidate
+.PHONY: profile durable durable-quick test clean dependency-source-cache-invalidate
 
 profile:
 	python3 examples/run.py $(ARGS)
+
+durable:
+	python3 examples/durable.py $(ARGS)
+
+durable-quick:
+	python3 examples/durable.py --skip-build --duration 5 --jobs 100 $(ARGS)
 
 test:
 	python3 -m unittest discover -s examples -p 'test_*.py' -v

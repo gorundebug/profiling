@@ -180,6 +180,25 @@ Redpanda is not started, every framework implementation disables the
 `orderProcessed` endpoint, and native implementations receive no Kafka
 configuration. That remains the default `--scenario normal` behavior.
 
+## Temporal and DurableCall profiling
+
+The normal profiler leaves Cron and Temporal disabled and starts no Automation
+Service or Temporal infrastructure. Profile the durable path explicitly with:
+
+```bash
+make durable ARGS="--cores 2 --duration 20 --jobs 10000"
+```
+
+This runs Go, Python, and TypeScript sequentially, starts the generated
+Automation Service with real Temporal/PostgreSQL, pauses periodic admission,
+queues a deterministic Schedule backfill, and samples the complete endpoint →
+graph → `DurableCall` → result path. Outputs are stored separately under
+`examples/.artifacts/durable/`, including folded stacks, flamegraphs, ranked
+top tables, and per-language summaries. Native, Rust, and C++ variants are not
+listed because they do not have a production Temporal SDK implementation. Use
+`make durable-quick` only after the corresponding images and profiler sidecar
+have already been built.
+
 TypeScript framework/native CPU profiling also supports explicit failure-path
 experiments:
 
