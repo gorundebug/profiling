@@ -139,7 +139,12 @@ services:
         "    security_opt: [seccomp:unconfined]\n"
         "    profiles: [profiling]\n"
         "    environment:\n"
-        "      PROFILING_PYSPY_RATE: \"5\"\n"
+        # Temporal's Python SDK spends much of its time in Rust Core. Blocking
+        # sampling is intentionally enabled only for this opt-in profile so
+        # the Python activation/graph stacks are sampled often enough to be
+        # useful. The normal profiler retains its low-overhead default.
+        "      PROFILING_PYSPY_NONBLOCKING: \"0\"\n"
+        "      PROFILING_PYSPY_RATE: \"100\"\n"
         "    volumes:\n"
         "      - ${DURABLE_PROFILING_ARTIFACTS}:/results\n"
         "    networks: [app_net]\n"
@@ -296,6 +301,18 @@ def profile_language(
         missing = [path for path in required if not path.is_file() or path.stat().st_size == 0]
         if missing:
             raise RuntimeError(f"profiling artifacts are missing: {missing}")
+        if language.tool == "pyspy":
+            samples = sum(
+                int(line.rsplit(" ", 1)[1])
+                for line in Path(f"{output}.folded.txt").read_text().splitlines()
+                if line.rsplit(" ", 1)[-1].isdigit()
+            )
+            minimum_samples = max(10, duration)
+            if samples < minimum_samples:
+                raise RuntimeError(
+                    "Python DurableCall profile is not representative: "
+                    f"captured {samples} samples, expected at least {minimum_samples}"
+                )
         result = {
             "language": language.name,
             "cores": cores,

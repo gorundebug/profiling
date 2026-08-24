@@ -30,6 +30,7 @@ perf_event="${PROFILING_PERF_EVENT:-}"
 perf_period="${PROFILING_PERF_PERIOD:-}"
 pyspy_rate="${PROFILING_PYSPY_RATE:-5}"
 pyspy_timeout="${PROFILING_PYSPY_TIMEOUT:-}"
+pyspy_nonblocking="${PROFILING_PYSPY_NONBLOCKING:-1}"
 perf_event_args=()
 if [ -n "$perf_event" ]; then
   perf_event_args=(-e "$perf_event")
@@ -90,9 +91,13 @@ case "$tool" in
       mkdir -p "$(dirname "$ready_file")"
       printf '%s\n' "$pid" > "$ready_file"
     fi
+    pyspy_mode_args=()
+    if [ "$pyspy_nonblocking" != "0" ]; then
+      pyspy_mode_args=(--nonblocking)
+    fi
     timeout --signal=INT --kill-after=10 "$pyspy_timeout" \
       py-spy record -f raw -o "$folded_output" -p "$pid" -d "$duration" \
-        --rate "$pyspy_rate" --nonblocking
+        --rate "$pyspy_rate" "${pyspy_mode_args[@]}"
     ;;
   node-cpu)
     /usr/local/bin/node_inspector_profile.py \
