@@ -9,7 +9,9 @@ fi
 if [ -n "${SERVICEGEN_DEPENDENCY_PROXY_DIR:-}" ]; then
   host=${SERVICEGEN_DEPENDENCY_PROXY_DOCKER_HOST:-${SERVICEGEN_NEXUS_DOCKER_HOST:-host.docker.internal}}
   port=${SERVICEGEN_NEXUS_PORT:-18081}
+  git_port=${SERVICEGEN_GIT_MIRROR_PORT:-18084}
   base="http://$host:$port/repository"
+  git_mirror="http://$host:$git_port/cgi-bin/git"
   export GOPROXY="$base/go-proxy/"
   export NPM_CONFIG_REGISTRY="$base/npm-proxy/"
   export PIP_INDEX_URL="$base/pypi-proxy/simple"
@@ -29,6 +31,12 @@ if [ -n "${SERVICEGEN_DEPENDENCY_PROXY_DIR:-}" ]; then
   export SERVICEGEN_HELM_OPENTELEMETRY_URL="$base/helm-opentelemetry"
   export SERVICEGEN_HELM_JAEGER_URL="$base/helm-jaeger"
   export SERVICEGEN_HELM_REDPANDA_URL="$base/helm-redpanda"
+  export SERVICEGEN_GIT_MIRROR_URL="$git_mirror"
+  export GIT_CONFIG_COUNT=2
+  export GIT_CONFIG_KEY_0="url.$git_mirror/github.com/.insteadOf"
+  export GIT_CONFIG_VALUE_0=https://github.com/
+  export GIT_CONFIG_KEY_1="url.$git_mirror/gitlab.com/.insteadOf"
+  export GIT_CONFIG_VALUE_1=https://gitlab.com/
 fi
 
 exec "$SERVICEGEN_REAL_DOCKER" "$@"
