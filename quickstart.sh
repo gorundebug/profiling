@@ -177,7 +177,7 @@ if [ -n "${SERVICEGEN_DEPENDENCY_PROXY_DIR:-}" ]; then
     exit 1
   fi
   source "$proxy_resolver"
-  export SERVICEGEN_REAL_DOCKER="$(command -v docker)"
+  export DEPENDENCY_REAL_DOCKER="$(command -v docker)"
   proxy_bin="$(mktemp -d "${TMPDIR:-/tmp}/servicelib-proxy-bin.XXXXXX")"
   ln -s "$DEPENDENCIES_DIR/cppexample/scripts/docker-dependency-proxy.generated.sh" "$proxy_bin/docker"
   export PATH="$proxy_bin:$PATH"

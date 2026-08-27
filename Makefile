@@ -18,12 +18,12 @@ export SERVICEGEN_GIT_MIRROR_URL := $(SERVICEGEN_GIT_MIRROR_BASE)
 export GIT_CONFIG_COUNT := 2
 export GIT_CONFIG_KEY_0 := url.$(SERVICEGEN_GIT_MIRROR_BASE)/github.com/.insteadOf
 export GIT_CONFIG_VALUE_0 := https://github.com/
-export GIT_CONFIG_KEY_1 := url.$(SERVICEGEN_GIT_MIRROR_BASE)/gitlab.com/.insteadOf
+export GIT_CONFIG_KEY_1 := url.$(DEPENDENCY_GIT_MIRROR_BASE)/gitlab.com/.insteadOf
 export GIT_CONFIG_VALUE_1 := https://gitlab.com/
-ifeq ($(origin SERVICEGEN_REAL_DOCKER),undefined)
-SERVICEGEN_REAL_DOCKER := $(shell command -v docker)
+ifeq ($(origin DEPENDENCY_REAL_DOCKER),undefined)
+DEPENDENCY_REAL_DOCKER := $(shell command -v docker)
 endif
-export SERVICEGEN_REAL_DOCKER
+export DEPENDENCY_REAL_DOCKER
 export PATH := $(CURDIR)/scripts/dependency-proxy-bin:$(PATH)
 endif
 
