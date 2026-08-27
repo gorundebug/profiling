@@ -178,9 +178,8 @@ if [ -n "${SERVICEGEN_DEPENDENCY_PROXY_DIR:-}" ]; then
   fi
   source "$proxy_resolver"
   export SERVICEGEN_REAL_DOCKER="$(command -v docker)"
-  proxy_bin="$PROFILING_ROOT/.artifacts/dependency-proxy-bin"
-  mkdir -p "$proxy_bin"
-  ln -sfn "$PROFILING_ROOT/scripts/docker-dependency-proxy.sh" "$proxy_bin/docker"
+  proxy_bin="$(mktemp -d "${TMPDIR:-/tmp}/servicelib-proxy-bin.XXXXXX")"
+  ln -s "$DEPENDENCIES_DIR/cppexample/scripts/docker-dependency-proxy.generated.sh" "$proxy_bin/docker"
   export PATH="$proxy_bin:$PATH"
   echo "==> Using shared dependency proxy (host: $SERVICEGEN_NEXUS_CLIENT_HOST, containers: ${SERVICEGEN_DEPENDENCY_PROXY_DOCKER_HOST:-host.docker.internal})"
 fi
