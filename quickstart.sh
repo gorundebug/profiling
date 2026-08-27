@@ -171,16 +171,12 @@ if [ -n "${SERVICEGEN_DEPENDENCY_PROXY_DIR:-}" ]; then
   fi
   export SERVICEGEN_NEXUS_CLIENT_HOST="${SERVICEGEN_DEPENDENCY_PROXY_HOST:-localhost}"
   eval "$("$proxy_script" env)"
-  userver_revision="$(sed -nE \
-    's|.*userver\.git#([0-9a-f]+).*|\1|p' \
-    "$DEPENDENCIES_DIR/cppservicelib/docker-compose.cmake.yml" | head -n 1)"
-  if [ -z "$userver_revision" ]; then
-    echo "Unable to resolve the pinned userver revision" >&2
+  proxy_resolver="$DEPENDENCIES_DIR/cppexample/scripts/dependency-proxy-env.generated.sh"
+  if [ ! -f "$proxy_resolver" ]; then
+    echo "Shared dependency proxy requested, but $proxy_resolver is missing" >&2
     exit 1
   fi
-  proxy_docker_host="${SERVICEGEN_DEPENDENCY_PROXY_DOCKER_HOST:-host.docker.internal}"
-  proxy_port="${SERVICEGEN_DEPENDENCY_PROXY_PORT:-${SERVICEGEN_NEXUS_PORT:-18081}}"
-  export USERVER_SOURCE_CONTEXT="http://$proxy_docker_host:$proxy_port/repository/github-raw/userver-framework/userver/archive/$userver_revision.tar.gz"
+  source "$proxy_resolver"
   export SERVICEGEN_REAL_DOCKER="$(command -v docker)"
   proxy_bin="$PROFILING_ROOT/.artifacts/dependency-proxy-bin"
   mkdir -p "$proxy_bin"
