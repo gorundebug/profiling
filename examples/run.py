@@ -411,7 +411,7 @@ def environment(args: argparse.Namespace, language: Language) -> dict[str, str]:
         env["USERVER_LTO"] = "ON"
     elif language.name == "cpp-native":
         local_userver = ROOT / "userver"
-        env["USERVER_SOURCE_CONTEXT"] = (
+        env["USERVER_SOURCE_CONTEXT"] = os.environ.get("USERVER_SOURCE_CONTEXT") or (
             str(local_userver)
             if local_userver.is_dir()
             else USERVER_REMOTE_CONTEXT
