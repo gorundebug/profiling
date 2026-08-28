@@ -129,7 +129,7 @@ with one global data directory:
 
 ```bash
 ./quickstart.sh --clone-only
-export SERVICEGEN_DEPENDENCY_PROXY_DIR="$HOME/.servicegen/dependency-proxy"
+export DEPENDENCY_PROXY_DIR="$HOME/.servicegen/dependency-proxy"
 make -C .dependencies/goexample SERVICEGEN_NEXUS_ACCEPT_EULA=true dependency-cache-up # first start only
 ./quickstart.sh
 ```

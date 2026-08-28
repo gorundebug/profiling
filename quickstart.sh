@@ -119,9 +119,9 @@ if [ "$missing" -ne 0 ]; then
 fi
 echo "  git, docker, docker compose, python3, curl: OK"
 
-if [ -n "${SERVICEGEN_DEPENDENCY_PROXY_DIR:-}" ]; then
-  proxy_host="${SERVICEGEN_DEPENDENCY_PROXY_HOST:-localhost}"
-  git_mirror_port="${SERVICEGEN_GIT_MIRROR_PORT:-18084}"
+if [ -n "${DEPENDENCY_PROXY_DIR:-}" ]; then
+  proxy_host="${DEPENDENCY_PROXY_HOST:-localhost}"
+  git_mirror_port="${DEPENDENCY_GIT_MIRROR_PORT:-18084}"
   bootstrap_git_mirror="http://$proxy_host:$git_mirror_port/cgi-bin/git"
   export GIT_CONFIG_COUNT=2
   export GIT_CONFIG_KEY_0="url.$bootstrap_git_mirror/github.com/.insteadOf"
@@ -163,13 +163,13 @@ for repo in "${REPOS[@]}"; do
   git clone --branch main --single-branch --depth 1 "$ORG/$repo.git" "$dir"
 done
 
-if [ -n "${SERVICEGEN_DEPENDENCY_PROXY_DIR:-}" ]; then
+if [ -n "${DEPENDENCY_PROXY_DIR:-}" ]; then
   proxy_script="$DEPENDENCIES_DIR/goexample/scripts/dependency-cache.generated.sh"
   if [ ! -x "$proxy_script" ]; then
     echo "Shared dependency proxy requested, but $proxy_script is missing" >&2
     exit 1
   fi
-  export SERVICEGEN_NEXUS_CLIENT_HOST="${SERVICEGEN_DEPENDENCY_PROXY_HOST:-localhost}"
+  export DEPENDENCY_PROXY_CLIENT_HOST="${DEPENDENCY_PROXY_HOST:-localhost}"
   eval "$("$proxy_script" env)"
   proxy_resolver="$DEPENDENCIES_DIR/cppexample/scripts/dependency-proxy-env.generated.sh"
   if [ ! -f "$proxy_resolver" ]; then
@@ -181,7 +181,7 @@ if [ -n "${SERVICEGEN_DEPENDENCY_PROXY_DIR:-}" ]; then
   proxy_bin="$(mktemp -d "${TMPDIR:-/tmp}/servicelib-proxy-bin.XXXXXX")"
   ln -s "$DEPENDENCIES_DIR/cppexample/scripts/docker-dependency-proxy.generated.sh" "$proxy_bin/docker"
   export PATH="$proxy_bin:$PATH"
-  echo "==> Using shared dependency proxy (host: $SERVICEGEN_NEXUS_CLIENT_HOST, containers: ${SERVICEGEN_DEPENDENCY_PROXY_DOCKER_HOST:-host.docker.internal})"
+  echo "==> Using shared dependency proxy (host: $DEPENDENCY_PROXY_CLIENT_HOST, containers: ${DEPENDENCY_PROXY_DOCKER_HOST:-host.docker.internal})"
 fi
 
 echo "==> Restoring pinned native profiling projects"

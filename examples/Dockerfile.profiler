@@ -1,11 +1,12 @@
-FROM debian:bookworm-slim AS allocation-builder
+ARG DEPENDENCY_DOCKER_REGISTRY=docker.io
+FROM ${DEPENDENCY_DOCKER_REGISTRY}/library/debian:bookworm-slim AS allocation-builder
 
-ARG SERVICEGEN_APT_DEBIAN_URL=
-ARG SERVICEGEN_APT_DEBIAN_SECURITY_URL=
-RUN if [ -n "$SERVICEGEN_APT_DEBIAN_URL$SERVICEGEN_APT_DEBIAN_SECURITY_URL" ]; then \
+ARG DEPENDENCY_APT_DEBIAN_URL=
+ARG DEPENDENCY_APT_DEBIAN_SECURITY_URL=
+RUN if [ -n "$DEPENDENCY_APT_DEBIAN_URL$DEPENDENCY_APT_DEBIAN_SECURITY_URL" ]; then \
       find /etc/apt -type f \( -name '*.list' -o -name '*.sources' \) -exec sed -i \
-        -e "s|http://deb.debian.org/debian-security|$SERVICEGEN_APT_DEBIAN_SECURITY_URL|g" \
-        -e "s|http://deb.debian.org/debian|$SERVICEGEN_APT_DEBIAN_URL|g" {} +; \
+        -e "s|http://deb.debian.org/debian-security|$DEPENDENCY_APT_DEBIAN_SECURITY_URL|g" \
+        -e "s|http://deb.debian.org/debian|$DEPENDENCY_APT_DEBIAN_URL|g" {} +; \
     fi
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends gcc libc6-dev \
@@ -15,20 +16,20 @@ COPY allocation_profile.c /src/allocation_profile.c
 RUN gcc -std=c11 -O2 -fPIC -shared -Wall -Wextra -Werror \
     /src/allocation_profile.c -ldl -o /liballocation_profile.so
 
-FROM debian:bookworm-slim
+FROM ${DEPENDENCY_DOCKER_REGISTRY}/library/debian:bookworm-slim
 
-ARG SERVICEGEN_APT_DEBIAN_URL=
-ARG SERVICEGEN_APT_DEBIAN_SECURITY_URL=
-ARG SERVICEGEN_GITHUB_RAW_URL=https://github.com
+ARG DEPENDENCY_APT_DEBIAN_URL=
+ARG DEPENDENCY_APT_DEBIAN_SECURITY_URL=
+ARG DEPENDENCY_GITHUB_RAW_URL=https://github.com
 ARG FLAMEGRAPH_REVISION=41fee1f99f9276008b7cd112fca19dc3ea84ac32
 ARG PIP_INDEX_URL=https://pypi.org/simple
 ARG PIP_TRUSTED_HOST=
 ENV PIP_INDEX_URL=${PIP_INDEX_URL}
 ENV PIP_TRUSTED_HOST=${PIP_TRUSTED_HOST}
-RUN if [ -n "$SERVICEGEN_APT_DEBIAN_URL$SERVICEGEN_APT_DEBIAN_SECURITY_URL" ]; then \
+RUN if [ -n "$DEPENDENCY_APT_DEBIAN_URL$DEPENDENCY_APT_DEBIAN_SECURITY_URL" ]; then \
       find /etc/apt -type f \( -name '*.list' -o -name '*.sources' \) -exec sed -i \
-        -e "s|http://deb.debian.org/debian-security|$SERVICEGEN_APT_DEBIAN_SECURITY_URL|g" \
-        -e "s|http://deb.debian.org/debian|$SERVICEGEN_APT_DEBIAN_URL|g" {} +; \
+        -e "s|http://deb.debian.org/debian-security|$DEPENDENCY_APT_DEBIAN_SECURITY_URL|g" \
+        -e "s|http://deb.debian.org/debian|$DEPENDENCY_APT_DEBIAN_URL|g" {} +; \
     fi
 RUN apt-get update \
     && apt-get install --yes --no-install-recommends \
@@ -36,7 +37,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 RUN curl --fail --location --silent --show-error \
-      "$SERVICEGEN_GITHUB_RAW_URL/brendangregg/FlameGraph/archive/$FLAMEGRAPH_REVISION.tar.gz" \
+      "$DEPENDENCY_GITHUB_RAW_URL/brendangregg/FlameGraph/archive/$FLAMEGRAPH_REVISION.tar.gz" \
       --output /tmp/flamegraph.tar.gz \
     && mkdir -p /opt/FlameGraph \
     && tar -xzf /tmp/flamegraph.tar.gz --strip-components=1 -C /opt/FlameGraph \

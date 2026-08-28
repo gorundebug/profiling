@@ -15,7 +15,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-from run import acquire_tooling_lock
+from run import acquire_tooling_lock, build_profiler_image
 
 
 HERE = Path(__file__).resolve().parent
@@ -167,13 +167,7 @@ def compose(language: Language, overlay: Path, *arguments: str) -> list[str]:
 
 
 def build(language: Language, overlay: Path, env: dict[str, str]) -> None:
-    run(
-        [
-            "docker", "build", "--file", str(HERE / "Dockerfile.profiler"),
-            "--tag", "servicelib-profiler:latest", str(HERE),
-        ],
-        cwd=HERE, env=env,
-    )
+    build_profiler_image(env)
     if language.name == "go":
         run(
             ["make", "-C", "automationservice", "docker-build", f"PROJECT_DIR={language.example}"],

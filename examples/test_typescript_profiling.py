@@ -47,15 +47,19 @@ class FakeHeapSnapshotInspector:
 class TypeScriptProfilingTest(unittest.TestCase):
     def test_profiler_image_trusts_http_dependency_proxy(self) -> None:
         environment = {
-            "SERVICEGEN_DEPENDENCY_PROXY_DIR": "/cache",
-            "SERVICEGEN_DEPENDENCY_PROXY_HOST": "localhost",
-            "SERVICEGEN_DEPENDENCY_PROXY_DOCKER_HOST": "host.docker.internal",
+            "DEPENDENCY_PROXY_DIR": "/cache",
+            "DEPENDENCY_PROXY_HOST": "localhost",
+            "DEPENDENCY_PROXY_DOCKER_HOST": "host.docker.internal",
             "PIP_INDEX_URL": "http://localhost:18081/repository/pypi-proxy/simple",
             "PIP_TRUSTED_HOST": "localhost",
         }
         with mock.patch.object(profiling, "run") as run:
             profiling.build_profiler_image(environment)
         command = run.call_args.args[0]
+        self.assertIn(
+            "DEPENDENCY_DOCKER_REGISTRY=localhost:18083",
+            command,
+        )
         self.assertIn(
             "PIP_INDEX_URL=http://host.docker.internal:18081/repository/pypi-proxy/simple",
             command,
