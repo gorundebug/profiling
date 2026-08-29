@@ -122,6 +122,11 @@ measurements.
 Use `./quickstart.sh --clone-only` to just fetch the sibling repos without
 running anything.
 
+Delete `examples/.artifacts` before a deliberately clean profiling run. The
+quickstart normally refreshes existing Git mirrors before resolving managed
+revisions; `--skip-git-mirror-refresh` is only for a known-fresh offline cache,
+not a fallback after refresh failure.
+
 ### Optional shared package proxy
 
 To route package downloads through the generated shared Nexus proxy, opt in
@@ -130,7 +135,7 @@ with one global data directory:
 ```bash
 ./quickstart.sh --clone-only
 export DEPENDENCY_PROXY_DIR="$HOME/.servicegen/dependency-proxy"
-make -C .dependencies/goexample SERVICEGEN_NEXUS_ACCEPT_EULA=true dependency-cache-up # first start only
+make -C .dependencies/goexample DEPENDENCY_PROXY_ACCEPT_EULA=true dependency-cache-up # first start only
 ./quickstart.sh
 ```
 
@@ -138,8 +143,9 @@ The quickstart configures host and Docker consumers automatically, including
 Docker Engine on Linux through `host-gateway`. Without the variable it uses
 normal upstreams. The persistent proxy data is shared with benchmarks,
 conformance and generated projects. It caches package registries, Debian/Ubuntu
-APT packages and immutable GitHub/GitLab release archives, not profiler outputs
-or compiler artifacts.
+APT packages and immutable GitHub/GitLab release archives; the companion Git
+mirror caches project clones. Profiler outputs and compiler artifacts remain
+separate.
 
 To reuse an existing set of repositories instead of `.dependencies`, pass it
 explicitly:
