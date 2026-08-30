@@ -98,7 +98,7 @@ class TypeScriptProfilingTest(unittest.TestCase):
             vus=256,
         )
         environment = profiling.environment(args, languages["typescript"])
-        self.assertEqual(environment["SERVICEGEN_RUNTIME_STRIP"], "OFF")
+        self.assertEqual(environment["RUNTIME_STRIP"], "OFF")
         self.assertEqual(environment["PROFILING_VUS"], "256")
         self.assertEqual(
             environment["TSSERVICELIB_SOURCE_CONTEXT"],
@@ -124,28 +124,28 @@ class TypeScriptProfilingTest(unittest.TestCase):
         for name in ("cppboost", "cppboost-native"):
             environment = profiling.environment(args, languages[name])
             self.assertEqual(
-                environment["SERVICEGEN_GRPC_SOURCE_CONTEXT"],
+                environment["GRPC_SOURCE_CONTEXT"],
                 "https://github.com/grpc/grpc.git#v1.71.0",
             )
             self.assertEqual(
-                environment["SERVICEGEN_ASIO_GRPC_SOURCE_CONTEXT"],
+                environment["ASIO_GRPC_SOURCE_CONTEXT"],
                 "https://github.com/Tradias/asio-grpc.git#v3.5.0",
             )
 
         with mock.patch.dict(
             profiling.os.environ,
             {
-                "SERVICEGEN_GRPC_SOURCE_CONTEXT": "/cache/grpc-src",
-                "SERVICEGEN_ASIO_GRPC_SOURCE_CONTEXT": "/cache/asio-grpc-src",
+                "GRPC_SOURCE_CONTEXT": "/cache/grpc-src",
+                "ASIO_GRPC_SOURCE_CONTEXT": "/cache/asio-grpc-src",
             },
             clear=False,
         ):
             environment = profiling.environment(args, languages["cppboost"])
         self.assertEqual(
-            environment["SERVICEGEN_GRPC_SOURCE_CONTEXT"], "/cache/grpc-src"
+            environment["GRPC_SOURCE_CONTEXT"], "/cache/grpc-src"
         )
         self.assertEqual(
-            environment["SERVICEGEN_ASIO_GRPC_SOURCE_CONTEXT"],
+            environment["ASIO_GRPC_SOURCE_CONTEXT"],
             "/cache/asio-grpc-src",
         )
 

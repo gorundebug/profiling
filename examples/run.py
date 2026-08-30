@@ -24,7 +24,7 @@ PROFILING_DIR = Path(__file__).resolve().parent
 PROFILING_ROOT = PROFILING_DIR.parent
 ROOT = Path(
     os.environ.get(
-        "PROFILING_DEPENDENCIES_DIR",
+        "DEPENDENCIES_DIR",
         str(PROFILING_ROOT.parent),
     )
 ).expanduser().resolve()
@@ -280,7 +280,7 @@ def ensure_example(language: Language, env: dict[str, str]) -> None:
         if (
             language.repository is not None
             and language.revision is not None
-            and env.get("PROFILING_UPDATE_MANAGED_DEPENDENCIES") == "1"
+            and env.get("UPDATE_MANAGED_DEPENDENCIES") == "1"
         ):
             status = run(
                 ["git", "status", "--porcelain", "--untracked-files=no"],
@@ -393,11 +393,11 @@ def environment(args: argparse.Namespace, language: Language) -> dict[str, str]:
             "PROFILING_RESULT_FILE": "/results/unused.json",
             "PROFILING_SERVICE_CORES": str(args.cores),
             "PROFILING_VUS": str(args.vus),
-            "SERVICEGEN_DOCKER_TARGET": "runtime",
-            "SERVICEGEN_EXAMPLE_PROFILE": getattr(
+            "DOCKER_TARGET": "runtime",
+            "EXAMPLE_PROFILE": getattr(
                 args, "graph_profile", "function-call"
             ),
-            "SERVICEGEN_RUNTIME_STRIP": "OFF",
+            "RUNTIME_STRIP": "OFF",
         }
     )
     apply_scenario_environment(
@@ -428,11 +428,11 @@ def environment(args: argparse.Namespace, language: Language) -> dict[str, str]:
         # these named contexts. A populated build tree can contain matching
         # gRPC headers, causing CMake to configure the example itself as gRPC.
         env.setdefault(
-            "SERVICEGEN_GRPC_SOURCE_CONTEXT",
+            "GRPC_SOURCE_CONTEXT",
             cppboost_dependency_context("grpc"),
         )
         env.setdefault(
-            "SERVICEGEN_ASIO_GRPC_SOURCE_CONTEXT",
+            "ASIO_GRPC_SOURCE_CONTEXT",
             cppboost_dependency_context("asio-grpc"),
         )
     elif language.name == "python":
@@ -533,7 +533,7 @@ def write_run_manifest(
         )
     }
     images: dict[str, dict[str, str]] = {
-        "profiler": image_identity("servicelib-profiler:latest")
+        "profiler": image_identity("servicelib-profiler:local")
     }
     for language in selected:
         sources[language.name] = git_source_identity(language.example)
@@ -609,7 +609,7 @@ def build_profiler_image(env: dict[str, str]) -> None:
         if value := docker_build_environment_value(env, name):
             build_args.extend(["--build-arg", f"{name}={value}"])
     run(
-        ["docker", "build", *build_args, "-f", "Dockerfile.profiler", "-t", "servicelib-profiler:latest", "."],
+        ["docker", "build", *build_args, "-f", "Dockerfile.profiler", "-t", "servicelib-profiler:local", "."],
         cwd=PROFILING_DIR,
         env=env,
     )
@@ -636,7 +636,7 @@ def extract_profiler_assets(env: dict[str, str]) -> None:
             "docker", "run", "--rm",
             "--volume", f"{ARTIFACTS}:/out",
             "--entrypoint", "cp",
-            "servicelib-profiler:latest",
+            "servicelib-profiler:local",
             "/usr/local/lib/liballocation_profile.so",
             "/out/liballocation_profile.so",
         ],

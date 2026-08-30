@@ -19,9 +19,13 @@ set -euo pipefail
 
 ORG="https://github.com/gorundebug"
 PROFILING_ROOT="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
-DEPENDENCIES_DIR="$PROFILING_ROOT/.dependencies"
-MANAGED_DEPENDENCIES=1
-EXAMPLE_PROFILE="function-call"
+if [ -n "${DEPENDENCIES_DIR:-}" ]; then
+  MANAGED_DEPENDENCIES=0
+else
+  DEPENDENCIES_DIR="$PROFILING_ROOT/.dependencies"
+  MANAGED_DEPENDENCIES=1
+fi
+EXAMPLE_PROFILE="${EXAMPLE_PROFILE:-function-call}"
 PROFILE_EXPLICIT=0
 
 REPOS=(goexample cppexample cppboostexample pyexample rustexample tsexample servicelib cppservicelib cppboostservicelib pyservicelib rustservicelib tsservicelib servicegen)
@@ -98,8 +102,8 @@ esac
 
 mkdir -p "$DEPENDENCIES_DIR"
 DEPENDENCIES_DIR="$(CDPATH= cd -- "$DEPENDENCIES_DIR" && pwd)"
-export PROFILING_DEPENDENCIES_DIR="$DEPENDENCIES_DIR"
-export PROFILING_UPDATE_MANAGED_DEPENDENCIES="$MANAGED_DEPENDENCIES"
+export DEPENDENCIES_DIR
+export UPDATE_MANAGED_DEPENDENCIES="$MANAGED_DEPENDENCIES"
 
 echo "==> Checking prerequisites"
 missing=0
@@ -226,7 +230,7 @@ if [ -d "$PROFILING_ROOT/examples/.artifacts" ] && [ "$PREVIOUS_PROFILE" != "$EX
 fi
 mkdir -p "$PROFILING_ROOT/examples/.artifacts"
 printf '%s\n' "$EXAMPLE_PROFILE" > "$PROFILE_MARKER"
-export SERVICEGEN_EXAMPLE_PROFILE="$EXAMPLE_PROFILE"
+export EXAMPLE_PROFILE="$EXAMPLE_PROFILE"
 
 if [ "$EXAMPLE_PROFILE" = "current" ]; then
   PROFILE_TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/servicelib-profiling-current.XXXXXX")"
@@ -237,7 +241,7 @@ if [ "$EXAMPLE_PROFILE" = "current" ]; then
     --workspace "$PROFILE_WORKSPACE" \
     --profile "$EXAMPLE_PROFILE"
   DEPENDENCIES_DIR="$PROFILE_WORKSPACE"
-  export PROFILING_DEPENDENCIES_DIR="$DEPENDENCIES_DIR"
+  export DEPENDENCIES_DIR
 fi
 
 echo "==> Profiling graph profile '$EXAMPLE_PROFILE'"

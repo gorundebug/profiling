@@ -50,7 +50,7 @@ services:
     restart: "no"
 
   profiler:
-    image: servicelib-profiler:latest
+    image: servicelib-profiler:local
     pid: "service:orderservice"
     cap_add:
       - SYS_PTRACE
@@ -67,7 +67,7 @@ services:
       - app_net
 
   profiler-inventory:
-    image: servicelib-profiler:latest
+    image: servicelib-profiler:local
     pid: "service:inventoryservice"
     cap_add:
       - SYS_PTRACE
@@ -84,7 +84,7 @@ services:
       - app_net
 
   profiler-analytics:
-    image: servicelib-profiler:latest
+    image: servicelib-profiler:local
     pid: "service:analyticsservice"
     cap_add:
       - SYS_PTRACE

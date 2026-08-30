@@ -20,7 +20,7 @@ from run import acquire_tooling_lock, build_profiler_image
 
 HERE = Path(__file__).resolve().parent
 ROOT = Path(
-    os.environ.get("PROFILING_DEPENDENCIES_DIR", HERE.parent.parent)
+    os.environ.get("DEPENDENCIES_DIR", HERE.parent.parent)
 ).expanduser().resolve()
 ARTIFACTS = HERE / ".artifacts" / "durable"
 SCHEDULE_ID = "example-automation-schedule"
@@ -77,8 +77,8 @@ def environment(language: Language, cores: int, duration: int) -> dict[str, str]
         "DURABLE_PROFILING_CORES": str(cores),
         "DURABLE_PROFILING_DIR": str(HERE),
         "DURABLE_PROFILING_DURATION": str(duration),
-        "SERVICEGEN_DOCKER_TARGET": "runtime",
-        "SERVICEGEN_RUNTIME_STRIP": "OFF",
+        "DOCKER_TARGET": "runtime",
+        "RUNTIME_STRIP": "OFF",
     })
     if language.name == "go":
         env["GOSERVICELIB_SOURCE_CONTEXT"] = str(language.runtime)
@@ -133,7 +133,7 @@ services:
         "    volumes:\n"
         f"      - {overrides}:{language.override_target}:ro\n"
         "  profiler:\n"
-        "    image: servicelib-profiler:latest\n"
+        "    image: servicelib-profiler:local\n"
         "    pid: service:automationservice\n"
         "    cap_add: [SYS_PTRACE, SYS_ADMIN]\n"
         "    security_opt: [seccomp:unconfined]\n"
