@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -10,6 +12,48 @@ from typing import Any
 
 import node_inspector_profile
 import run as profiling
+
+
+class LanguageLoggingTest(unittest.TestCase):
+    def test_captures_complete_subprocess_output_per_profile_and_language(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            artifacts = Path(directory)
+            args = argparse.Namespace(graph_profile="current")
+            with mock.patch.object(profiling, "ARTIFACTS", artifacts):
+                with profiling.language_log(args, "rust") as log:
+                    profiling.run(
+                        [
+                            sys.executable,
+                            "-c",
+                            "import sys; print('proxy-request'); print('build-error', file=sys.stderr)",
+                        ],
+                        cwd=artifacts,
+                        env=os.environ.copy(),
+                    )
+                self.assertEqual(log, artifacts / "logs/current/rust.log")
+                contents = log.read_text()
+                self.assertIn("proxy-request", contents)
+                self.assertIn("build-error", contents)
+
+    def test_preserves_complete_proxy_contract_for_language_builds(self) -> None:
+        args = argparse.Namespace(
+            cores=2, coroutine_diagnostics=False, duration="1s",
+            graph_profile="current", loadgen_cores=2, rate=1,
+            scenario="normal", vus=1,
+        )
+        contract = {
+            "DEPENDENCY_PROXY_DIR": "/cache",
+            "DEPENDENCY_CONAN_REMOTE_URL": "http://proxy/conan-group",
+            "DEPENDENCY_GITHUB_RAW_URL": "http://proxy/github-raw",
+            "GOPROXY": "http://proxy/go-proxy/",
+            "NPM_CONFIG_REGISTRY": "http://proxy/npm-proxy/",
+            "PIP_INDEX_URL": "http://proxy/pypi-proxy/simple",
+            "CARGO_REGISTRIES_CRATES_IO_INDEX": "sparse+http://proxy/cargo-proxy/",
+        }
+        with mock.patch.dict(os.environ, contract, clear=False):
+            actual = profiling.environment(args, profiling.LANGUAGES[0])
+        for name, value in contract.items():
+            self.assertEqual(actual[name], value)
 
 
 class FakeInspector:

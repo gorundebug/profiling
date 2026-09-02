@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import atexit
+import contextlib
 import hashlib
 import json
 import os
@@ -18,7 +19,7 @@ import urllib.error
 import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, TextIO
 
 PROFILING_DIR = Path(__file__).resolve().parent
 PROFILING_ROOT = PROFILING_DIR.parent
@@ -35,6 +36,54 @@ USERVER_REMOTE_CONTEXT = (
     "#c9f77729c0edce7e423def2d4a4450aa7fc9d259"
 )
 TOOLING_LOCK_ENV = "SERVICELIB_TOOLING_LOCK_HELD"
+ACTIVE_LANGUAGE_LOG: TextIO | None = None
+
+
+def language_log_path(args: argparse.Namespace, language: str) -> Path:
+    return ARTIFACTS / "logs" / args.graph_profile / f"{language}.log"
+
+
+def _terminal(message: str, *, error: bool = False) -> None:
+    print(message, file=sys.__stderr__ if error else sys.__stdout__, flush=True)
+
+
+def _failure_tail(path: Path, lines: int = 40) -> str:
+    try:
+        return "\n".join(path.read_text(errors="replace").splitlines()[-lines:])
+    except OSError as error:
+        return f"cannot read log tail: {error}"
+
+
+@contextlib.contextmanager
+def language_log(
+    args: argparse.Namespace, language: str, *, phase: str = "run", append: bool = False
+):
+    global ACTIVE_LANGUAGE_LOG
+    path = language_log_path(args, language)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    label = f"profiling:{language}:{phase}"
+    _terminal(f"==> [{label}] START (log: {path})")
+    started = time.monotonic()
+    with path.open("a" if append else "w", encoding="utf-8", buffering=1) as output:
+        if append:
+            output.write(f"\n=== {phase} ===\n")
+        previous = ACTIVE_LANGUAGE_LOG
+        ACTIVE_LANGUAGE_LOG = output
+        try:
+            with contextlib.redirect_stdout(output), contextlib.redirect_stderr(output):
+                yield path
+        except BaseException:
+            elapsed = time.monotonic() - started
+            _terminal(
+                f"==> [{label}] FAIL ({elapsed:.1f}s; log: {path})",
+                error=True,
+            )
+            _terminal(_failure_tail(path), error=True)
+            raise
+        finally:
+            ACTIVE_LANGUAGE_LOG = previous
+    elapsed = time.monotonic() - started
+    _terminal(f"==> [{label}] PASS ({elapsed:.1f}s; log: {path})")
 
 
 def cppboost_dependency_context(dependency: str) -> str:
@@ -259,19 +308,31 @@ def run(
     check: bool = True,
 ) -> subprocess.CompletedProcess[str]:
     print("+", " ".join(command), flush=True)
-    return subprocess.run(
-        command,
-        cwd=cwd,
-        env=env,
-        check=check,
-        text=True,
+    completed = subprocess.run(
+        command, cwd=cwd, env=env, check=False, text=True,
         capture_output=capture,
+        stdout=None if capture or ACTIVE_LANGUAGE_LOG is None else ACTIVE_LANGUAGE_LOG,
+        stderr=None if capture or ACTIVE_LANGUAGE_LOG is None else subprocess.STDOUT,
     )
+    if capture and ACTIVE_LANGUAGE_LOG is not None:
+        if completed.stdout:
+            ACTIVE_LANGUAGE_LOG.write(completed.stdout)
+        if completed.stderr:
+            ACTIVE_LANGUAGE_LOG.write(completed.stderr)
+    if check and completed.returncode != 0:
+        raise subprocess.CalledProcessError(
+            completed.returncode, command, completed.stdout, completed.stderr
+        )
+    return completed
 
 
 def popen(command: list[str], *, cwd: Path, env: dict[str, str]) -> subprocess.Popen[str]:
     print("+", " ".join(command), "&", flush=True)
-    return subprocess.Popen(command, cwd=cwd, env=env, text=True)
+    return subprocess.Popen(
+        command, cwd=cwd, env=env, text=True,
+        stdout=ACTIVE_LANGUAGE_LOG,
+        stderr=subprocess.STDOUT if ACTIVE_LANGUAGE_LOG is not None else None,
+    )
 
 
 def ensure_example(language: Language, env: dict[str, str]) -> None:
@@ -576,6 +637,10 @@ def write_run_manifest(
             "loadgen_cores": args.loadgen_cores,
         },
         "profile_kinds": list(args.profile_kind),
+        "logs": {
+            language.name: str(language_log_path(args, language.name))
+            for language in selected
+        },
         "sources": sources,
         "input_sha256": inputs,
         "images": images,
@@ -2381,44 +2446,57 @@ def main() -> int:
             )
         )
     ]
-    dependency_environment = os.environ.copy()
-    for language in selected:
-        if language.repository is not None:
-            ensure_example(language, dependency_environment)
     ARTIFACTS.mkdir(parents=True, exist_ok=True)
-    prepare_selected_configs(selected, args.cores)
-    if args.prepare_host_profiling:
-        lower_perf_paranoid()
-    if args.max_map_count:
-        raise_max_map_count(args.max_map_count)
+    for name in ("setup", "manifest", *(language.name for language in selected)):
+        language_log_path(args, name).unlink(missing_ok=True)
+    with language_log(args, "setup"):
+        dependency_environment = os.environ.copy()
+        for language in selected:
+            if language.repository is not None:
+                ensure_example(language, dependency_environment)
+        prepare_selected_configs(selected, args.cores)
+        if args.prepare_host_profiling:
+            lower_perf_paranoid()
+        if args.max_map_count:
+            raise_max_map_count(args.max_map_count)
+        if not args.skip_build:
+            build_profiler_image(os.environ.copy())
+            extract_profiler_assets(os.environ.copy())
+        elif not (ARTIFACTS / "liballocation_profile.so").is_file():
+            extract_profiler_assets(os.environ.copy())
 
     if not args.skip_build:
-        build_profiler_image(os.environ.copy())
-        extract_profiler_assets(os.environ.copy())
         for language in selected:
-            build(language, environment(args, language))
-    elif not (ARTIFACTS / "liballocation_profile.so").is_file():
-        extract_profiler_assets(os.environ.copy())
+            with language_log(args, language.name, phase="build", append=True):
+                build(language, environment(args, language))
 
     if any(language.name == "cppboost" for language in selected):
         cppboost = next(
             language for language in selected if language.name == "cppboost"
         )
-        verify_cppboost_release_build(
-            environment(args, cppboost),
-            require_coroutine_diagnostics=args.coroutine_diagnostics,
-        )
+        with language_log(
+            args, cppboost.name, phase="verify-build", append=True
+        ):
+            verify_cppboost_release_build(
+                environment(args, cppboost),
+                require_coroutine_diagnostics=args.coroutine_diagnostics,
+            )
 
-    outputs = [write_run_manifest(args, selected)]
+    outputs = []
+    with language_log(args, "manifest"):
+        outputs.append(write_run_manifest(args, selected))
     for language in selected:
-        print(f"\n=== {language.name} ===", flush=True)
-        if {"cpu", "scheduler", "offcpu"} & set(args.profile_kind):
-            outputs.extend(profile_language(language, args))
-        if "allocation" in args.profile_kind:
-            if language.tool == "node-cpu":
-                outputs.extend(profile_node_allocations(language, args))
-            else:
-                outputs.extend(profile_allocations(language, args))
+        with language_log(
+            args, language.name, phase="run", append=True
+        ):
+            print(f"=== {language.name} ===", flush=True)
+            if {"cpu", "scheduler", "offcpu"} & set(args.profile_kind):
+                outputs.extend(profile_language(language, args))
+            if "allocation" in args.profile_kind:
+                if language.tool == "node-cpu":
+                    outputs.extend(profile_node_allocations(language, args))
+                else:
+                    outputs.extend(profile_allocations(language, args))
 
     outputs.extend(write_typescript_comparison(outputs))
 

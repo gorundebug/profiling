@@ -1,5 +1,18 @@
 #!/bin/sh
 set -eu
 
-script_dir=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
-exec "$script_dir/docker-dependency-proxy.sh" "$@"
+profiling_root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
+dependencies_dir=${DEPENDENCIES_DIR:-}
+if [ -z "$dependencies_dir" ]; then
+  if [ -x "$profiling_root/.dependencies/cppexample/scripts/docker-dependency-proxy.generated.sh" ]; then
+    dependencies_dir=$profiling_root/.dependencies
+  else
+    dependencies_dir=$(CDPATH= cd -- "$profiling_root/.." && pwd)
+  fi
+fi
+wrapper=$dependencies_dir/cppexample/scripts/docker-dependency-proxy.generated.sh
+if [ ! -x "$wrapper" ]; then
+  echo "generated Docker dependency proxy wrapper is missing: $wrapper" >&2
+  exit 2
+fi
+exec "$wrapper" "$@"

@@ -1,16 +1,19 @@
 ARG DEPENDENCY_DOCKER_REGISTRY=docker.io
 FROM ${DEPENDENCY_DOCKER_REGISTRY}/library/debian:bookworm-slim AS allocation-builder
 
+ARG TARGETARCH
 ARG DEPENDENCY_APT_DEBIAN_URL=
 ARG DEPENDENCY_APT_DEBIAN_SECURITY_URL=
+RUN rm -f /etc/apt/apt.conf.d/docker-clean
 RUN if [ -n "$DEPENDENCY_APT_DEBIAN_URL$DEPENDENCY_APT_DEBIAN_SECURITY_URL" ]; then \
       find /etc/apt -type f \( -name '*.list' -o -name '*.sources' \) -exec sed -i \
         -e "s|http://deb.debian.org/debian-security|$DEPENDENCY_APT_DEBIAN_SECURITY_URL|g" \
         -e "s|http://deb.debian.org/debian|$DEPENDENCY_APT_DEBIAN_URL|g" {} +; \
     fi
-RUN apt-get update \
-    && apt-get install --yes --no-install-recommends gcc libc6-dev \
-    && rm -rf /var/lib/apt/lists/*
+RUN --mount=type=cache,id=servicegen-apt-lists-${TARGETARCH},target=/var/lib/apt/lists,sharing=locked \
+    --mount=type=cache,id=servicegen-apt-cache-${TARGETARCH},target=/var/cache/apt,sharing=locked \
+    apt-get update \
+    && apt-get install --yes --no-install-recommends gcc libc6-dev
 
 COPY allocation_profile.c /src/allocation_profile.c
 RUN gcc -std=c11 -O2 -fPIC -shared -Wall -Wextra -Werror \
@@ -18,12 +21,14 @@ RUN gcc -std=c11 -O2 -fPIC -shared -Wall -Wextra -Werror \
 
 FROM ${DEPENDENCY_DOCKER_REGISTRY}/library/debian:bookworm-slim
 
+ARG TARGETARCH
 ARG DEPENDENCY_APT_DEBIAN_URL=
 ARG DEPENDENCY_APT_DEBIAN_SECURITY_URL=
 ARG DEPENDENCY_GITHUB_RAW_URL=https://github.com
 ARG FLAMEGRAPH_REVISION=41fee1f99f9276008b7cd112fca19dc3ea84ac32
 ARG PIP_INDEX_URL=https://pypi.org/simple
 ARG PIP_TRUSTED_HOST=
+RUN rm -f /etc/apt/apt.conf.d/docker-clean
 ENV PIP_INDEX_URL=${PIP_INDEX_URL}
 ENV PIP_TRUSTED_HOST=${PIP_TRUSTED_HOST}
 RUN if [ -n "$DEPENDENCY_APT_DEBIAN_URL$DEPENDENCY_APT_DEBIAN_SECURITY_URL" ]; then \
@@ -31,10 +36,11 @@ RUN if [ -n "$DEPENDENCY_APT_DEBIAN_URL$DEPENDENCY_APT_DEBIAN_SECURITY_URL" ]; t
         -e "s|http://deb.debian.org/debian-security|$DEPENDENCY_APT_DEBIAN_SECURITY_URL|g" \
         -e "s|http://deb.debian.org/debian|$DEPENDENCY_APT_DEBIAN_URL|g" {} +; \
     fi
-RUN apt-get update \
+RUN --mount=type=cache,id=servicegen-apt-lists-${TARGETARCH},target=/var/lib/apt/lists,sharing=locked \
+    --mount=type=cache,id=servicegen-apt-cache-${TARGETARCH},target=/var/cache/apt,sharing=locked \
+    apt-get update \
     && apt-get install --yes --no-install-recommends \
-       binutils linux-perf procps perl git curl python3-pip ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+       binutils linux-perf procps perl git curl python3-pip ca-certificates
 
 RUN curl --fail --location --silent --show-error \
       "$DEPENDENCY_GITHUB_RAW_URL/brendangregg/FlameGraph/archive/$FLAMEGRAPH_REVISION.tar.gz" \
@@ -43,7 +49,8 @@ RUN curl --fail --location --silent --show-error \
     && tar -xzf /tmp/flamegraph.tar.gz --strip-components=1 -C /opt/FlameGraph \
     && rm -f /tmp/flamegraph.tar.gz
 
-RUN pip3 install --break-system-packages --no-cache-dir \
+RUN --mount=type=cache,id=servicegen-profiler-pip-v1-${TARGETARCH},target=/root/.cache/pip,sharing=locked \
+    pip3 install --break-system-packages \
     py-spy websocket-client==1.9.0 sourcemap==0.2.1
 
 COPY profile.sh /usr/local/bin/profile.sh

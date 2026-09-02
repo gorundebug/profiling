@@ -20,6 +20,9 @@ class DependencyProxyMakeTest(unittest.TestCase):
         self.assertIn("scripts/dependency-proxy-bin:$(PATH)", makefile)
         launcher = ROOT / "scripts/dependency-proxy-bin/docker"
         self.assertTrue(os.access(launcher, os.X_OK))
+        launcher_text = launcher.read_text()
+        self.assertIn("cppexample/scripts/docker-dependency-proxy.generated.sh", launcher_text)
+        self.assertNotIn("docker-dependency-proxy.sh", launcher_text)
 
 
 if __name__ == "__main__":

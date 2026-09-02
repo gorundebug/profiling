@@ -122,6 +122,12 @@ measurements.
 Use `./quickstart.sh --clone-only` to just fetch the sibling repos without
 running anything.
 
+Every implementation gets a complete log at
+`examples/.artifacts/logs/<profile>/<language>.log`; shared profiler-image and
+manifest work is stored in `setup.log` and `manifest.log`. These files retain
+Docker build output and dependency-proxy/cache evidence. The terminal only
+shows concise `START`/`PASS`/`FAIL` progress and a failure tail.
+
 Delete `examples/.artifacts` before a deliberately clean profiling run. The
 quickstart normally refreshes existing Git mirrors before resolving managed
 revisions; `--skip-git-mirror-refresh` is only for a known-fresh offline cache,
