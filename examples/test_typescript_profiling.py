@@ -89,6 +89,32 @@ class FakeHeapSnapshotInspector:
 
 
 class TypeScriptProfilingTest(unittest.TestCase):
+    def test_owned_compose_external_images_use_registry_contract(self) -> None:
+        common = (profiling.PROFILING_DIR / "compose.common.yml").read_text()
+        native = (
+            profiling.PROFILING_DIR / "compose.typescript-native.yml"
+        ).read_text()
+        expected = "${DEPENDENCY_DOCKER_REGISTRY:-docker.io}/"
+        self.assertIn(f"image: {expected}grafana/k6:0.55.2", common)
+        self.assertIn(
+            f"image: {expected}redpandadata/redpanda:v24.2.5", native
+        )
+
+    def test_cppboost_release_validation_uses_built_local_images(self) -> None:
+        completed = mock.Mock(returncode=0, stdout="Release\n")
+        with mock.patch.object(profiling, "run", return_value=completed) as run:
+            profiling.verify_cppboost_release_build(
+                {}, require_coroutine_diagnostics=False
+            )
+        inspected = [call.args[0][-1] for call in run.call_args_list]
+        self.assertEqual(
+            inspected,
+            [
+                "cppboostexample-inventoryservice:local",
+                "cppboostexample-orderservice:local",
+            ],
+        )
+
     def test_profiler_image_trusts_http_dependency_proxy(self) -> None:
         environment = {
             "DEPENDENCY_PROXY_DIR": "/cache",
@@ -148,6 +174,18 @@ class TypeScriptProfilingTest(unittest.TestCase):
             environment["TSSERVICELIB_SOURCE_CONTEXT"],
             str(profiling.ROOT / "tsservicelib"),
         )
+        for language_name, variable, dependency in (
+            ("python", "PYSERVICELIB_SOURCE_CONTEXT", "pyservicelib"),
+            ("rust", "RUSTSERVICELIB_SOURCE_CONTEXT", "rustservicelib"),
+            ("typescript", "TSSERVICELIB_SOURCE_CONTEXT", "tsservicelib"),
+        ):
+            language_environment = profiling.environment(
+                args, languages[language_name]
+            )
+            self.assertEqual(
+                language_environment[variable],
+                str(profiling.ROOT / dependency),
+            )
         overlay = languages["typescript"].overlay.read_text()
         self.assertIn(
             "ORDER_PROCESSED_ENABLED: "
@@ -191,6 +229,32 @@ class TypeScriptProfilingTest(unittest.TestCase):
         self.assertEqual(
             environment["ASIO_GRPC_SOURCE_CONTEXT"],
             "/cache/asio-grpc-src",
+        )
+
+    def test_remote_docker_git_contexts_use_mirror_in_proxy_mode(self) -> None:
+        environment = {
+            "DEPENDENCY_PROXY_DIR": "/cache",
+            "DEPENDENCY_PROXY_HOST": "localhost",
+            "DEPENDENCY_PROXY_DOCKER_HOST": "host.docker.internal",
+            "DEPENDENCY_GIT_MIRROR_URL": "http://localhost:18084/cgi-bin/git",
+        }
+        self.assertEqual(
+            profiling.docker_git_source_context(
+                environment, "https://github.com/grpc/grpc.git#v1.71.0"
+            ),
+            "http://host.docker.internal:18084/cgi-bin/git/"
+            "github.com/grpc/grpc.git#v1.71.0",
+        )
+        self.assertEqual(
+            profiling.docker_git_source_context(
+                environment, "https://gitlab.com/example/library.git#main"
+            ),
+            "http://host.docker.internal:18084/cgi-bin/git/"
+            "gitlab.com/example/library.git#main",
+        )
+        self.assertEqual(
+            profiling.docker_git_source_context(environment, "/cache/grpc-src"),
+            "/cache/grpc-src",
         )
 
     def test_cpp_normal_profile_uses_kafka_free_override(self) -> None:

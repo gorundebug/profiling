@@ -1,4 +1,7 @@
 services:
+  redpanda:
+    image: ${DEPENDENCY_DOCKER_REGISTRY:-docker.io}/redpandadata/redpanda:v24.2.5
+
   analyticsservice:
     environment:
       NODE_OPTIONS: "--inspect=0.0.0.0:9229 --enable-source-maps"

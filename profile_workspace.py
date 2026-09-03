@@ -128,8 +128,8 @@ def verify_current_graph(example: Path) -> dict[str, int]:
         "parallel_call_links": source.count("callSemantics: ParallelCall"),
     }
     expected = {
-        "task_pool_links": 1,
-        "priority_task_pool_links": 1,
+        "task_pool_links": 4,
+        "priority_task_pool_links": 4,
         "parallel_call_links": 3,
     }
     if actual != expected:

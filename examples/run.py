@@ -26,7 +26,7 @@ PROFILING_ROOT = PROFILING_DIR.parent
 ROOT = Path(
     os.environ.get(
         "DEPENDENCIES_DIR",
-        str(PROFILING_ROOT.parent),
+        str(PROFILING_ROOT / ".dependencies"),
     )
 ).expanduser().resolve()
 ARTIFACTS = PROFILING_DIR / ".artifacts"
@@ -110,6 +110,23 @@ def cppboost_dependency_context(dependency: str) -> str:
     if match is None:
         raise RuntimeError(f"{prefix}_VERSION is missing from {versions}")
     return f"{repository}#{match.group(1)}"
+
+
+def docker_git_source_context(env: dict[str, str], context: str) -> str:
+    """Route remote Docker Git contexts through the shared mirror in proxy mode."""
+    if not env.get("DEPENDENCY_PROXY_DIR"):
+        return context
+    mirror = env.get("DEPENDENCY_GIT_MIRROR_URL")
+    if not mirror:
+        return context
+    mirror = docker_build_environment_value(
+        env, "DEPENDENCY_GIT_MIRROR_URL"
+    ) or mirror
+    for upstream in ("https://github.com/", "https://gitlab.com/"):
+        if context.startswith(upstream):
+            authority = upstream.removeprefix("https://")
+            return f"{mirror.rstrip('/')}/{authority}{context[len(upstream):]}"
+    return context
 
 
 def acquire_tooling_lock() -> None:
@@ -475,7 +492,7 @@ def environment(args: argparse.Namespace, language: Language) -> dict[str, str]:
         env["USERVER_SOURCE_CONTEXT"] = os.environ.get("USERVER_SOURCE_CONTEXT") or (
             str(local_userver)
             if local_userver.is_dir()
-            else USERVER_REMOTE_CONTEXT
+            else docker_git_source_context(env, USERVER_REMOTE_CONTEXT)
         )
         env["USERVER_LTO"] = "ON"
     elif language.name == "cppboost":
@@ -490,15 +507,19 @@ def environment(args: argparse.Namespace, language: Language) -> dict[str, str]:
         # gRPC headers, causing CMake to configure the example itself as gRPC.
         env.setdefault(
             "GRPC_SOURCE_CONTEXT",
-            cppboost_dependency_context("grpc"),
+            docker_git_source_context(env, cppboost_dependency_context("grpc")),
         )
         env.setdefault(
             "ASIO_GRPC_SOURCE_CONTEXT",
-            cppboost_dependency_context("asio-grpc"),
+            docker_git_source_context(
+                env, cppboost_dependency_context("asio-grpc")
+            ),
         )
     elif language.name == "python":
         env["PROFILING_PYTHON_CONFIG_DIR"] = str(ARTIFACTS / "python-config")
         env["PYSERVICELIB_SOURCE_CONTEXT"] = str(ROOT / "pyservicelib")
+    elif language.name == "rust":
+        env["RUSTSERVICELIB_SOURCE_CONTEXT"] = str(ROOT / "rustservicelib")
     elif language.name == "typescript":
         env["TSSERVICELIB_SOURCE_CONTEXT"] = str(ROOT / "tsservicelib")
     return env
@@ -762,7 +783,7 @@ def verify_cppboost_release_build(
         return result.stdout.strip()
 
     for service in ("inventoryservice", "orderservice"):
-        image = f"cppboostexample-{service}"
+        image = f"cppboostexample-{service}:local"
         build_type = image_label(image, "org.gorundebug.build-type")
         if build_type != "Release":
             raise RuntimeError(
@@ -2304,6 +2325,8 @@ def raise_max_map_count(value: int) -> None:
 
 def clean() -> None:
     for language in LANGUAGES:
+        if not language.example.is_dir():
+            continue
         args = argparse.Namespace(cores=1, loadgen_cores=1, duration="1s", vus=1)
         run(
             compose_command(language, "down", "--volumes", "--remove-orphans"),
