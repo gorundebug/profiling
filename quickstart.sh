@@ -30,6 +30,24 @@ PROFILE_EXPLICIT=0
 
 REPOS=(goexample cppexample cppboostexample pyexample rustexample tsexample servicelib cppservicelib cppboostservicelib pyservicelib rustservicelib tsservicelib servicegen)
 
+export GIT_HTTP_LOW_SPEED_LIMIT=${DEPENDENCY_GIT_LOW_SPEED_LIMIT:-1024}
+export GIT_HTTP_LOW_SPEED_TIME=${DEPENDENCY_GIT_LOW_SPEED_TIME:-30}
+
+retry_dependency_command() {
+  attempt=1
+  attempts=${DEPENDENCY_COMMAND_RETRY_ATTEMPTS:-10}
+  until "$@"; do
+    if [ "$attempt" -ge "$attempts" ]; then
+      echo "dependency command failed after $attempts attempts: $*" >&2
+      return 1
+    fi
+    delay=$((attempt * 2))
+    echo "dependency command failed; retrying same route in ${delay}s ($attempt/$attempts): $*" >&2
+    sleep "$delay"
+    attempt=$((attempt + 1))
+  done
+}
+
 clone_only=0
 refresh_git_mirror=1
 while [ "$#" -gt 0 ]; do
@@ -134,7 +152,9 @@ if [ -n "${DEPENDENCY_PROXY_DIR:-}" ]; then
   export GIT_CONFIG_VALUE_1=https://gitlab.com/
   if [ "$refresh_git_mirror" -eq 1 ]; then
     echo "==> Refreshing every cached Git mirror before resolving revisions"
-    curl --fail-with-body --show-error --silent --request POST \
+    retry_dependency_command curl --fail-with-body --show-error --silent \
+      --connect-timeout 15 --speed-limit 1024 --speed-time 30 --max-time 60 \
+      --request POST \
       "$bootstrap_git_mirror/__servicegen_refresh"
   else
     echo "==> Trusting cached Git mirror revisions (--skip-git-mirror-refresh)"
@@ -146,25 +166,16 @@ for repo in "${REPOS[@]}"; do
   dir="$DEPENDENCIES_DIR/$repo"
   if [ -d "$dir/.git" ]; then
     if [ "$MANAGED_DEPENDENCIES" -eq 1 ]; then
-      if ! git -C "$dir" diff --quiet || ! git -C "$dir" diff --cached --quiet; then
-        echo "  $repo: managed checkout has local changes; refusing to update" >&2
-        exit 1
-      fi
       echo "  $repo: updating managed main checkout"
-      git -C "$dir" fetch origin main:refs/remotes/origin/main
-      if git -C "$dir" show-ref --verify --quiet refs/heads/main; then
-        git -C "$dir" checkout main
-      else
-        git -C "$dir" checkout --no-track -b main origin/main
-      fi
-      git -C "$dir" pull --ff-only origin main
+      "$PROFILING_ROOT/scripts/update-managed-checkout.sh" "$dir"
     else
       echo "  $repo: external checkout, leaving unchanged"
     fi
     continue
   fi
   echo "  cloning $repo"
-  git clone --branch main --single-branch --depth 1 "$ORG/$repo.git" "$dir"
+  retry_dependency_command git clone --branch main --single-branch --depth 1 \
+    "$ORG/$repo.git" "$dir"
 done
 
 if [ -n "${DEPENDENCY_PROXY_DIR:-}" ]; then

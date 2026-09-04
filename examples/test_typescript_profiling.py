@@ -136,18 +136,6 @@ class TypeScriptProfilingTest(unittest.TestCase):
         )
         self.assertIn("PIP_TRUSTED_HOST=host.docker.internal", command)
 
-    def test_disabled_kafka_config_keeps_required_connector_fields(self) -> None:
-        self.assertEqual(
-            profiling.disabled_kafka_connector_values(),
-            {
-                "orderEventsBrokers": "redpanda:9092",
-                "orderEventsPassword": "",
-                "orderEventsSaslMechanism": "SCRAM-SHA-512",
-                "orderEventsSecurityProtocol": "PLAINTEXT",
-                "orderEventsUsername": "",
-            },
-        )
-
     def test_language_matrix_and_environment(self) -> None:
         languages = {language.name: language for language in profiling.LANGUAGES}
         self.assertEqual(
@@ -231,32 +219,6 @@ class TypeScriptProfilingTest(unittest.TestCase):
             "/cache/asio-grpc-src",
         )
 
-    def test_remote_docker_git_contexts_use_mirror_in_proxy_mode(self) -> None:
-        environment = {
-            "DEPENDENCY_PROXY_DIR": "/cache",
-            "DEPENDENCY_PROXY_HOST": "localhost",
-            "DEPENDENCY_PROXY_DOCKER_HOST": "host.docker.internal",
-            "DEPENDENCY_GIT_MIRROR_URL": "http://localhost:18084/cgi-bin/git",
-        }
-        self.assertEqual(
-            profiling.docker_git_source_context(
-                environment, "https://github.com/grpc/grpc.git#v1.71.0"
-            ),
-            "http://host.docker.internal:18084/cgi-bin/git/"
-            "github.com/grpc/grpc.git#v1.71.0",
-        )
-        self.assertEqual(
-            profiling.docker_git_source_context(
-                environment, "https://gitlab.com/example/library.git#main"
-            ),
-            "http://host.docker.internal:18084/cgi-bin/git/"
-            "gitlab.com/example/library.git#main",
-        )
-        self.assertEqual(
-            profiling.docker_git_source_context(environment, "/cache/grpc-src"),
-            "/cache/grpc-src",
-        )
-
     def test_cpp_normal_profile_uses_kafka_free_override(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             with mock.patch.object(profiling, "ARTIFACTS", Path(directory)):
@@ -269,6 +231,10 @@ class TypeScriptProfilingTest(unittest.TestCase):
                 '"/profiling-config/orderservice.overrides.yaml"',
                 variables,
             )
+            self.assertIn('orderEventsPassword: ""', variables)
+            self.assertIn("orderEventsSaslMechanism: SCRAM-SHA-512", variables)
+            self.assertIn("orderEventsSecurityProtocol: PLAINTEXT", variables)
+            self.assertIn('orderEventsUsername: ""', variables)
             self.assertIn("orderProcessedEnabled: false", variables)
             self.assertEqual(
                 override,
