@@ -151,10 +151,13 @@ if [ -n "${DEPENDENCY_PROXY_DIR:-}" ]; then
   export GIT_CONFIG_KEY_1="url.$bootstrap_git_mirror/gitlab.com/.insteadOf"
   export GIT_CONFIG_VALUE_1=https://gitlab.com/
   if [ "$refresh_git_mirror" -eq 1 ]; then
-    echo "==> Refreshing every cached Git mirror before resolving revisions"
-    retry_dependency_command curl --fail-with-body --show-error --silent \
-      --connect-timeout 15 --speed-limit 1024 --speed-time 30 --max-time 60 \
+    echo "==> Refreshing managed Git mirrors before resolving revisions"
+    mirror_refresh_repositories=$(printf 'github.com/gorundebug/%s.git\n' "${REPOS[@]}")
+    curl --fail-with-body --show-error --silent \
+      --connect-timeout 15 --max-time 600 \
+      --retry 2 --retry-delay 2 --retry-max-time 600 --retry-all-errors \
       --request POST \
+      --data-binary "$mirror_refresh_repositories" \
       "$bootstrap_git_mirror/__servicegen_refresh"
   else
     echo "==> Trusting cached Git mirror revisions (--skip-git-mirror-refresh)"
