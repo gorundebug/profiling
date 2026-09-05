@@ -109,7 +109,7 @@ class TypeScriptProfilingTest(unittest.TestCase):
         }
         profiler_environment = {
             "PROFILING_PERF_FREQUENCY": "997",
-            "PROFILING_PYSPY_NONBLOCKING": "1",
+            "PROFILING_PYSPY_NONBLOCKING": "0",
             "PROFILING_PYSPY_RATE": "100",
         }
         rendered = {

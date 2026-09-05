@@ -30,7 +30,7 @@ perf_event="${PROFILING_PERF_EVENT:-}"
 perf_period="${PROFILING_PERF_PERIOD:-}"
 pyspy_rate="${PROFILING_PYSPY_RATE:-100}"
 pyspy_timeout="${PROFILING_PYSPY_TIMEOUT:-}"
-pyspy_nonblocking="${PROFILING_PYSPY_NONBLOCKING:-1}"
+pyspy_nonblocking="${PROFILING_PYSPY_NONBLOCKING:-0}"
 perf_event_args=()
 if [ -n "$perf_event" ]; then
   perf_event_args=(-e "$perf_event")

@@ -20,11 +20,13 @@ directly by PID:
   [FlameGraph](https://github.com/brendangregg/FlameGraph) Perl scripts →
   SVG.
 - **Python**: [`py-spy`](https://github.com/benfred/py-spy) samples the
-  interpreter directly and writes an SVG flamegraph natively — no
-  perf/collapse step needed. The default rate is 5 Hz to avoid a sampling
-  backlog under full load; override it with `PROFILING_PYSPY_RATE`.
-  Sampling is interrupted if it exceeds the requested duration by 30 seconds;
-  override that wall-clock limit with `PROFILING_PYSPY_TIMEOUT`.
+  interpreter directly and emits folded stacks used for both the SVG and the
+  ranked tables. The default rate is 100 Hz; override it with
+  `PROFILING_PYSPY_RATE`. Sampling pauses the interpreter briefly while each
+  stack is read so symbol data remains consistent. The lower-overhead but less
+  reliable nonblocking mode is available explicitly through
+  `PROFILING_PYSPY_NONBLOCKING=1`. A bounded timeout covers sampling and final
+  output draining; override it with `PROFILING_PYSPY_TIMEOUT`.
 - **TypeScript/Node.js**: the profiler connects to the Node Inspector and
   records a V8 `.cpuprofile`. Generated JavaScript positions are rewritten
   through the deployed source maps before folded stacks, top tables and SVGs

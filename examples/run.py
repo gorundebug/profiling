@@ -47,7 +47,7 @@ PROFILING_TELEMETRY_DEFAULTS = {
 }
 PROFILING_SAMPLER_DEFAULTS = {
     "PROFILING_PERF_FREQUENCY": "997",
-    "PROFILING_PYSPY_NONBLOCKING": "1",
+    "PROFILING_PYSPY_NONBLOCKING": "0",
     "PROFILING_PYSPY_RATE": "100",
 }
 
@@ -684,7 +684,7 @@ def write_run_manifest(
             "noop_metrics": os.environ.get("PROFILING_NOOP_METRICS", "1"),
             "noop_tracing": os.environ.get("PROFILING_NOOP_TRACING", "1"),
             "perf_frequency": os.environ.get("PROFILING_PERF_FREQUENCY", "997"),
-            "pyspy_nonblocking": os.environ.get("PROFILING_PYSPY_NONBLOCKING", "1"),
+            "pyspy_nonblocking": os.environ.get("PROFILING_PYSPY_NONBLOCKING", "0"),
             "pyspy_rate": os.environ.get("PROFILING_PYSPY_RATE", "100"),
         },
         "logs": {

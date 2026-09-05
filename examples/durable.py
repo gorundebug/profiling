@@ -143,10 +143,9 @@ services:
         "    security_opt: [seccomp:unconfined]\n"
         "    profiles: [profiling]\n"
         "    environment:\n"
-        # Temporal's Python SDK spends much of its time in Rust Core. Blocking
-        # sampling is intentionally enabled only for this opt-in profile so
-        # the Python activation/graph stacks are sampled often enough to be
-        # useful. The normal profiler retains its low-overhead default.
+        # Temporal's Python SDK spends much of its time in Rust Core. Keep the
+        # reliable blocking mode so Python activation/graph stacks are read
+        # from a consistent interpreter state.
         "      PROFILING_PYSPY_NONBLOCKING: \"0\"\n"
         "      PROFILING_PYSPY_RATE: \"100\"\n"
         "    volumes:\n"
