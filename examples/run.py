@@ -40,6 +40,16 @@ USERVER_REMOTE_CONTEXT = (
 )
 TOOLING_LOCK_ENV = "SERVICELIB_TOOLING_LOCK_HELD"
 ACTIVE_LANGUAGE_LOG: TextIO | None = None
+PROFILING_TELEMETRY_DEFAULTS = {
+    "PROFILING_NOOP_LOGS": "1",
+    "PROFILING_NOOP_METRICS": "1",
+    "PROFILING_NOOP_TRACING": "1",
+}
+PROFILING_SAMPLER_DEFAULTS = {
+    "PROFILING_PERF_FREQUENCY": "997",
+    "PROFILING_PYSPY_NONBLOCKING": "1",
+    "PROFILING_PYSPY_RATE": "100",
+}
 
 
 def language_log_path(args: argparse.Namespace, language: str) -> Path:
@@ -474,6 +484,19 @@ def environment(args: argparse.Namespace, language: Language) -> dict[str, str]:
             "RUNTIME_STRIP": "OFF",
         }
     )
+    for name, default in PROFILING_TELEMETRY_DEFAULTS.items():
+        value = env.setdefault(name, default)
+        if value not in {"0", "1"}:
+            raise RuntimeError(f"{name} must be 0 or 1, got {value!r}")
+    for name, default in PROFILING_SAMPLER_DEFAULTS.items():
+        value = env.setdefault(name, default)
+        if name == "PROFILING_PYSPY_NONBLOCKING":
+            if value not in {"0", "1"}:
+                raise RuntimeError(f"{name} must be 0 or 1, got {value!r}")
+        elif not value.isdigit() or int(value) <= 0:
+            raise RuntimeError(f"{name} must be a positive integer, got {value!r}")
+    if language.name == "go-native":
+        env["SERVICEGEN_RUNTIME_STRIP"] = "OFF"
     # Mixed C++ examples use the generated Go automation service until their
     # runtimes support Temporal. Keep that framework boundary local too.
     env["GOSERVICELIB_SOURCE_CONTEXT"] = str(ROOT / "servicelib")
@@ -655,6 +678,15 @@ def write_run_manifest(
             "loadgen_cores": args.loadgen_cores,
         },
         "profile_kinds": list(args.profile_kind),
+        "profile_settings": {
+            "runtime_strip": "OFF",
+            "noop_logs": os.environ.get("PROFILING_NOOP_LOGS", "1"),
+            "noop_metrics": os.environ.get("PROFILING_NOOP_METRICS", "1"),
+            "noop_tracing": os.environ.get("PROFILING_NOOP_TRACING", "1"),
+            "perf_frequency": os.environ.get("PROFILING_PERF_FREQUENCY", "997"),
+            "pyspy_nonblocking": os.environ.get("PROFILING_PYSPY_NONBLOCKING", "1"),
+            "pyspy_rate": os.environ.get("PROFILING_PYSPY_RATE", "100"),
+        },
         "logs": {
             language.name: str(language_log_path(args, language.name))
             for language in selected
@@ -710,6 +742,63 @@ def docker_build_environment_value(env: dict[str, str], name: str) -> str | None
     if name == "PIP_TRUSTED_HOST" and value == host:
         return docker_host
     return value.replace(f"://{host}:", f"://{docker_host}:")
+
+
+def validate_profile_compose(language: Language, env: dict[str, str]) -> None:
+    rendered = run(
+        compose_command(
+            language, "--profile", "profiling", "config", "--format", "json"
+        ),
+        cwd=language.example,
+        env=env,
+        capture=True,
+    )
+    try:
+        services = json.loads(rendered.stdout)["services"]
+    except (KeyError, TypeError, json.JSONDecodeError) as error:
+        raise RuntimeError(
+            f"{language.name} merged profiling Compose is invalid: {error}"
+        ) from error
+
+    required_telemetry = {
+        "SERVICELIB_NOOP_LOGS": env["PROFILING_NOOP_LOGS"],
+        "SERVICELIB_NOOP_METRICS": env["PROFILING_NOOP_METRICS"],
+        "SERVICELIB_NOOP_TRACING": env["PROFILING_NOOP_TRACING"],
+    }
+    application_services = ["inventoryservice", "orderservice"]
+    if "analyticsservice" in services:
+        application_services.append("analyticsservice")
+    for service in application_services:
+        actual = services.get(service, {}).get("environment", {})
+        missing = {
+            name: {"actual": str(actual.get(name, "")), "expected": expected}
+            for name, expected in required_telemetry.items()
+            if str(actual.get(name, "")) != expected
+        }
+        if missing:
+            raise RuntimeError(
+                f"{language.name} {service} profiling telemetry differs: {missing}"
+            )
+
+    required_sampler = {
+        "PROFILING_PERF_FREQUENCY": env["PROFILING_PERF_FREQUENCY"],
+        "PROFILING_PYSPY_NONBLOCKING": env["PROFILING_PYSPY_NONBLOCKING"],
+        "PROFILING_PYSPY_RATE": env["PROFILING_PYSPY_RATE"],
+    }
+    profiler_services = ["profiler", "profiler-inventory"]
+    if "profiler-analytics" in services:
+        profiler_services.append("profiler-analytics")
+    for service in profiler_services:
+        actual = services.get(service, {}).get("environment", {})
+        missing = {
+            name: {"actual": str(actual.get(name, "")), "expected": expected}
+            for name, expected in required_sampler.items()
+            if str(actual.get(name, "")) != expected
+        }
+        if missing:
+            raise RuntimeError(
+                f"{language.name} {service} sampler settings differ: {missing}"
+            )
 
 
 def extract_profiler_assets(env: dict[str, str]) -> None:
@@ -1011,6 +1100,82 @@ def wait_for_service(
     )
     print(logs.stdout + logs.stderr, file=sys.stderr)
     raise RuntimeError(f"{language.name} {service} did not become ready: {last_error}")
+
+
+def call_semantics_counts(text: str) -> dict[str, int]:
+    tokens = {
+        "FunctionCall": (
+            "callSemantics: FunctionCall", "call_semantics: FunctionCall",
+            "      functionCall:",
+        ),
+        "TaskPool": (
+            "callSemantics: TaskPool", "call_semantics: TaskPool",
+            "call_semantics: !TaskPool", "      taskPool:",
+        ),
+        "PriorityTaskPool": (
+            "callSemantics: PriorityTaskPool",
+            "call_semantics: PriorityTaskPool",
+            "call_semantics: !PriorityTaskPool", "      priorityTaskPool:",
+        ),
+        "ParallelCall": (
+            "callSemantics: ParallelCall", "call_semantics: ParallelCall",
+            "      parallelCall:",
+        ),
+    }
+    return {
+        name: sum(text.count(token) for token in variants)
+        for name, variants in tokens.items()
+    }
+
+
+def verify_generated_graph_profile(language: Language, profile: str) -> None:
+    if language.repository is not None:
+        return
+    graph_path = language.example / "graph" / "example.generated.yaml"
+    actual = call_semantics_counts(graph_path.read_text())
+    expected = {
+        "function-call": {
+            "FunctionCall": 19, "TaskPool": 0,
+            "PriorityTaskPool": 0, "ParallelCall": 0,
+        },
+        "current": {
+            "FunctionCall": 8, "TaskPool": 4,
+            "PriorityTaskPool": 4, "ParallelCall": 3,
+        },
+    }[profile]
+    if actual != expected:
+        raise RuntimeError(
+            f"{language.name} generated graph is not profile {profile!r}: "
+            f"actual={actual}, expected={expected}"
+        )
+
+
+def verify_live_service_graph_profile(
+    language: Language, service: str, port: int
+) -> None:
+    if language.repository is not None:
+        return
+    expected_path = (
+        language.example / service / "graph" / f"{service}.generated.yaml"
+    )
+    expected = call_semantics_counts(expected_path.read_text())
+    url = f"http://localhost:{port}/status/graph"
+    try:
+        with urllib.request.urlopen(url, timeout=5) as response:
+            actual = call_semantics_counts(response.read().decode("utf-8"))
+    except (OSError, UnicodeError, urllib.error.URLError) as error:
+        raise RuntimeError(
+            f"cannot verify {language.name} {service} live graph from {url}: {error}"
+        ) from error
+    if actual != expected:
+        raise RuntimeError(
+            f"{language.name} {service} live graph uses the wrong call semantics: "
+            f"actual={actual}, generated={expected}; the runtime image is stale"
+        )
+    print(
+        f"Verified {language.name} {service}: live call semantics={actual}",
+        flush=True,
+    )
 
 
 def load(
@@ -1356,7 +1521,7 @@ def profile_target(
             runtime_metrics_url=(
                 f"http://localhost:{ {'orderservice': 9091, 'inventoryservice': 9092, 'analyticsservice': 9093}[service] }/metrics"
                 if language.name in {"cppboost", "typescript"}
-                and "SERVICELIB_NOOP_METRICS" not in env
+                and env["PROFILING_NOOP_METRICS"] == "0"
                 else None
             ),
             runtime_metrics_name=(
@@ -1364,7 +1529,7 @@ def profile_target(
                     args, f"{language.name}.{service}.runtime-metrics.json"
                 )
                 if language.name in {"cppboost", "typescript"}
-                and "SERVICELIB_NOOP_METRICS" not in env
+                and env["PROFILING_NOOP_METRICS"] == "0"
                 else None
             ),
             orchestrate=True,
@@ -1596,6 +1761,9 @@ def profile_language(language: Language, args: argparse.Namespace) -> list[Path]
                 "http://localhost:9093/status/data",
                 env,
             )
+            verify_live_service_graph_profile(
+                language, "analyticsservice", 9093
+            )
         run(
             compose_command(
                 language, "up", "--detach", "--no-deps", "inventoryservice"
@@ -1609,6 +1777,9 @@ def profile_language(language: Language, args: argparse.Namespace) -> list[Path]
             "http://localhost:9092/status/data",
             env,
         )
+        verify_live_service_graph_profile(
+            language, "inventoryservice", 9092
+        )
         run(
             compose_command(language, "up", "--detach", "--no-deps", "orderservice"),
             cwd=language.example,
@@ -1620,6 +1791,7 @@ def profile_language(language: Language, args: argparse.Namespace) -> list[Path]
             "http://localhost:9091/status/data",
             env,
         )
+        verify_live_service_graph_profile(language, "orderservice", 9091)
 
         if args.warmup != "0" and args.warmup != "0s":
             load(
@@ -1837,6 +2009,9 @@ def profile_allocations(language: Language, args: argparse.Namespace) -> list[Pa
         wait_for_service(
             language, "inventoryservice", "http://localhost:9092/status/data", env
         )
+        verify_live_service_graph_profile(
+            language, "inventoryservice", 9092
+        )
         run(
             compose_command(language, "up", "--detach", "--no-deps", "orderservice"),
             cwd=language.example,
@@ -1845,6 +2020,7 @@ def profile_allocations(language: Language, args: argparse.Namespace) -> list[Pa
         wait_for_service(
             language, "orderservice", "http://localhost:9091/status/data", env
         )
+        verify_live_service_graph_profile(language, "orderservice", 9091)
         if args.warmup not in {"0", "0s"}:
             load(
                 language, env, duration=args.warmup,
@@ -1949,6 +2125,9 @@ def profile_node_allocations(
         wait_for_service(
             language, "inventoryservice", "http://localhost:9092/status/data", env
         )
+        verify_live_service_graph_profile(
+            language, "inventoryservice", 9092
+        )
         run(
             compose_command(language, "up", "--detach", "--no-deps", "orderservice"),
             cwd=language.example,
@@ -1957,6 +2136,7 @@ def profile_node_allocations(
         wait_for_service(
             language, "orderservice", "http://localhost:9091/status/data", env
         )
+        verify_live_service_graph_profile(language, "orderservice", 9091)
         if args.warmup not in {"0", "0s"}:
             load(
                 language,
@@ -2481,6 +2661,9 @@ def main() -> int:
         for language in selected:
             if language.repository is not None:
                 ensure_example(language, dependency_environment)
+        for language in selected:
+            verify_generated_graph_profile(language, args.graph_profile)
+            validate_profile_compose(language, environment(args, language))
         prepare_selected_configs(selected, args.cores)
         if args.prepare_host_profiling:
             lower_perf_paranoid()

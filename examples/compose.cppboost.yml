@@ -11,10 +11,9 @@ services:
       - SERVICELIB_ALLOCATION_PROFILE_PATH=/profiling-results/${PROFILING_ALLOCATION_INVENTORY_FILE:-allocation-disabled.bin}
       - SERVICELIB_ALLOCATION_STACK_PATH=/profiling-results/${PROFILING_ALLOCATION_STACK_INVENTORY_FILE:-allocation-stacks-disabled.bin}
       - SERVICELIB_ALLOCATION_STACK_SAMPLE_EVERY=${PROFILING_ALLOCATION_STACK_SAMPLE_EVERY:-0}
-      - SERVICELIB_NOOP_LOGS=1
-      # Pass through only when explicitly exported by a profiling experiment.
-      # Unlike KEY=${KEY:-}, this does not create a present-but-empty variable.
-      - SERVICELIB_NOOP_METRICS
+      - SERVICELIB_NOOP_LOGS=${PROFILING_NOOP_LOGS:-1}
+      - SERVICELIB_NOOP_METRICS=${PROFILING_NOOP_METRICS:-1}
+      - SERVICELIB_NOOP_TRACING=${PROFILING_NOOP_TRACING:-1}
     command:
       - --config
       - /app/config/config.yaml
@@ -40,8 +39,9 @@ services:
       - SERVICELIB_ALLOCATION_PROFILE_PATH=/profiling-results/${PROFILING_ALLOCATION_ORDER_FILE:-allocation-disabled.bin}
       - SERVICELIB_ALLOCATION_STACK_PATH=/profiling-results/${PROFILING_ALLOCATION_STACK_ORDER_FILE:-allocation-stacks-disabled.bin}
       - SERVICELIB_ALLOCATION_STACK_SAMPLE_EVERY=${PROFILING_ALLOCATION_STACK_SAMPLE_EVERY:-0}
-      - SERVICELIB_NOOP_LOGS=1
-      - SERVICELIB_NOOP_METRICS
+      - SERVICELIB_NOOP_LOGS=${PROFILING_NOOP_LOGS:-1}
+      - SERVICELIB_NOOP_METRICS=${PROFILING_NOOP_METRICS:-1}
+      - SERVICELIB_NOOP_TRACING=${PROFILING_NOOP_TRACING:-1}
     command:
       - --config
       - /app/config/config.yaml

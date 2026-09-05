@@ -6,6 +6,7 @@ import os
 import sys
 import tempfile
 import unittest
+from dataclasses import replace
 from unittest import mock
 from pathlib import Path
 from typing import Any
@@ -89,6 +90,86 @@ class FakeHeapSnapshotInspector:
 
 
 class TypeScriptProfilingTest(unittest.TestCase):
+    def test_merged_compose_must_preserve_telemetry_and_sampler_settings(self) -> None:
+        language = next(
+            item for item in profiling.LANGUAGES if item.name == "typescript"
+        )
+        args = argparse.Namespace(
+            cores=2,
+            coroutine_diagnostics=False,
+            duration="20s",
+            loadgen_cores=6,
+            vus=256,
+        )
+        environment = profiling.environment(args, language)
+        service_environment = {
+            "SERVICELIB_NOOP_LOGS": "1",
+            "SERVICELIB_NOOP_METRICS": "1",
+            "SERVICELIB_NOOP_TRACING": "1",
+        }
+        profiler_environment = {
+            "PROFILING_PERF_FREQUENCY": "997",
+            "PROFILING_PYSPY_NONBLOCKING": "1",
+            "PROFILING_PYSPY_RATE": "100",
+        }
+        rendered = {
+            "services": {
+                "inventoryservice": {"environment": service_environment},
+                "orderservice": {"environment": service_environment},
+                "profiler": {"environment": profiler_environment},
+                "profiler-inventory": {"environment": profiler_environment},
+            }
+        }
+        completed = type(
+            "Completed", (), {"stdout": json.dumps(rendered)}
+        )()
+        with mock.patch.object(profiling, "run", return_value=completed):
+            profiling.validate_profile_compose(language, environment)
+
+        rendered["services"]["orderservice"]["environment"] = {
+            **service_environment,
+            "SERVICELIB_NOOP_METRICS": "0",
+        }
+        completed.stdout = json.dumps(rendered)
+        with mock.patch.object(profiling, "run", return_value=completed):
+            with self.assertRaisesRegex(RuntimeError, "telemetry differs"):
+                profiling.validate_profile_compose(language, environment)
+
+    def test_generated_profile_rejects_mislabeled_current_graph(self) -> None:
+        base = next(language for language in profiling.LANGUAGES if language.name == "go")
+        with tempfile.TemporaryDirectory() as directory:
+            example = Path(directory)
+            (example / "graph").mkdir()
+            (example / "graph/example.generated.yaml").write_text(
+                "callSemantics: FunctionCall\n" * 8
+                + "callSemantics: TaskPool\n" * 4
+                + "callSemantics: PriorityTaskPool\n" * 4
+                + "callSemantics: ParallelCall\n" * 3
+            )
+            with self.assertRaisesRegex(RuntimeError, "not profile 'function-call'"):
+                profiling.verify_generated_graph_profile(
+                    replace(base, example=example), "function-call"
+                )
+
+    def test_live_profile_rejects_stale_runtime_image(self) -> None:
+        base = next(language for language in profiling.LANGUAGES if language.name == "go")
+        with tempfile.TemporaryDirectory() as directory:
+            example = Path(directory)
+            graph = example / "orderservice/graph"
+            graph.mkdir(parents=True)
+            (graph / "orderservice.generated.yaml").write_text(
+                "callSemantics: FunctionCall\n"
+            )
+            response = mock.MagicMock()
+            response.read.return_value = b"callSemantics: TaskPool\n"
+            with mock.patch.object(
+                profiling.urllib.request, "urlopen", return_value=response
+            ):
+                with self.assertRaisesRegex(RuntimeError, "runtime image is stale"):
+                    profiling.verify_live_service_graph_profile(
+                        replace(base, example=example), "orderservice", 9091
+                    )
+
     def test_owned_compose_external_images_use_registry_contract(self) -> None:
         common = (profiling.PROFILING_DIR / "compose.common.yml").read_text()
         native = (
@@ -180,7 +261,10 @@ class TypeScriptProfilingTest(unittest.TestCase):
             "${PROFILING_ORDER_PROCESSED_ENABLED:-false}",
             overlay,
         )
-        self.assertIn('SERVICELIB_NOOP_METRICS: "0"', overlay)
+        self.assertNotIn('SERVICELIB_NOOP_METRICS: "0"', overlay)
+        for name in profiling.PROFILING_TELEMETRY_DEFAULTS:
+            self.assertEqual(environment[name], "1")
+        self.assertEqual(environment["PROFILING_PYSPY_RATE"], "100")
 
     def test_boost_uses_pinned_dependency_contexts(self) -> None:
         languages = {language.name: language for language in profiling.LANGUAGES}

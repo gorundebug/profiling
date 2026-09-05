@@ -117,7 +117,7 @@ def generate_archives(source_root: Path, archive_dir: Path, profile: str) -> str
     ).stdout
 
 
-def verify_current_graph(example: Path) -> dict[str, int]:
+def verify_graph(example: Path, profile: str) -> dict[str, int]:
     graph = example / "graph" / "example.generated.yaml"
     if not graph.is_file():
         raise RuntimeError(f"generated graph is missing: {graph}")
@@ -127,11 +127,22 @@ def verify_current_graph(example: Path) -> dict[str, int]:
         "priority_task_pool_links": source.count("callSemantics: PriorityTaskPool"),
         "parallel_call_links": source.count("callSemantics: ParallelCall"),
     }
+    function_calls = source.count("callSemantics: FunctionCall")
+    actual["function_call_links"] = function_calls
     expected = {
-        "task_pool_links": 4,
-        "priority_task_pool_links": 4,
-        "parallel_call_links": 3,
-    }
+        "function-call": {
+            "task_pool_links": 0,
+            "priority_task_pool_links": 0,
+            "parallel_call_links": 0,
+            "function_call_links": 19,
+        },
+        "current": {
+            "task_pool_links": 4,
+            "priority_task_pool_links": 4,
+            "parallel_call_links": 3,
+            "function_call_links": 8,
+        },
+    }[profile]
     if actual != expected:
         raise RuntimeError(
             f"{example.name} profile graph differs: actual={actual}, expected={expected}"
@@ -182,7 +193,7 @@ def prepare(source_root: Path, workspace: Path, profile: str) -> None:
             cwd=destination,
         )
         (profile_artifacts / f"merge-{language}.log").write_text(merged.stdout)
-        generated[language] = verify_current_graph(destination)
+        generated[language] = verify_graph(destination, profile)
         initialize_git_snapshot(destination, profile)
 
     # Frameworks and native baselines remain exact source checkouts. Only the
@@ -215,7 +226,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source-root", type=Path, required=True)
     parser.add_argument("--workspace", type=Path, required=True)
-    parser.add_argument("--profile", choices=("current",), required=True)
+    parser.add_argument(
+        "--profile", choices=("function-call", "current"), required=True
+    )
     args = parser.parse_args()
     prepare(args.source_root.resolve(), args.workspace.resolve(), args.profile)
     print(f"Prepared {args.profile} profile workspace: {args.workspace}")

@@ -246,17 +246,15 @@ mkdir -p "$PROFILING_ROOT/examples/.artifacts"
 printf '%s\n' "$EXAMPLE_PROFILE" > "$PROFILE_MARKER"
 export EXAMPLE_PROFILE="$EXAMPLE_PROFILE"
 
-if [ "$EXAMPLE_PROFILE" = "current" ]; then
-  PROFILE_TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/servicelib-profiling-current.XXXXXX")"
-  PROFILE_WORKSPACE="$PROFILE_TEMP_DIR/workspace"
-  echo "==> Preparing disposable '$EXAMPLE_PROFILE' generated examples"
-  python3 "$PROFILING_ROOT/profile_workspace.py" \
-    --source-root "$SOURCE_DEPENDENCIES_DIR" \
-    --workspace "$PROFILE_WORKSPACE" \
-    --profile "$EXAMPLE_PROFILE"
-  DEPENDENCIES_DIR="$PROFILE_WORKSPACE"
-  export DEPENDENCIES_DIR
-fi
+PROFILE_TEMP_DIR="$(mktemp -d "${TMPDIR:-/tmp}/servicelib-profiling-${EXAMPLE_PROFILE}.XXXXXX")"
+PROFILE_WORKSPACE="$PROFILE_TEMP_DIR/workspace"
+echo "==> Preparing disposable '$EXAMPLE_PROFILE' generated examples"
+python3 "$PROFILING_ROOT/profile_workspace.py" \
+  --source-root "$SOURCE_DEPENDENCIES_DIR" \
+  --workspace "$PROFILE_WORKSPACE" \
+  --profile "$EXAMPLE_PROFILE"
+DEPENDENCIES_DIR="$PROFILE_WORKSPACE"
+export DEPENDENCIES_DIR
 
 echo "==> Profiling graph profile '$EXAMPLE_PROFILE'"
 cd "$PROFILING_ROOT"

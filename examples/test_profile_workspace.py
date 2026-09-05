@@ -54,7 +54,8 @@ class ProfileWorkspaceTest(unittest.TestCase):
             graph = example / "graph"
             graph.mkdir()
             (graph / "example.generated.yaml").write_text(
-                "callSemantics: TaskPool\n"
+                "callSemantics: FunctionCall\n" * 8
+                + "callSemantics: TaskPool\n"
                 "callSemantics: TaskPool\n"
                 "callSemantics: TaskPool\n"
                 "callSemantics: TaskPool\n"
@@ -67,13 +68,27 @@ class ProfileWorkspaceTest(unittest.TestCase):
                 "callSemantics: ParallelCall\n"
             )
             self.assertEqual(
-                profile["verify_current_graph"](example),
+                profile["verify_graph"](example, "current"),
                 {
                     "task_pool_links": 4,
                     "priority_task_pool_links": 4,
                     "parallel_call_links": 3,
+                    "function_call_links": 8,
                 },
             )
+
+    def test_function_call_profile_rejects_pools(self) -> None:
+        profile = runpy.run_path(str(PROFILING / "profile_workspace.py"))
+        with tempfile.TemporaryDirectory() as directory:
+            example = Path(directory)
+            graph = example / "graph"
+            graph.mkdir()
+            (graph / "example.generated.yaml").write_text(
+                "callSemantics: FunctionCall\n" * 18
+                + "callSemantics: TaskPool\n"
+            )
+            with self.assertRaisesRegex(RuntimeError, "profile graph differs"):
+                profile["verify_graph"](example, "function-call")
 
 
 if __name__ == "__main__":

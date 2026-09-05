@@ -311,14 +311,14 @@ k6 has drained its scenario-specific grace window, so the raw CPU profile covers
 the same accepted request window rather than silently ending before slow
 timeout responses complete.
 
-For `cppboost`, profiling additionally scrapes the service while load is
-active and writes
+When `PROFILING_NOOP_METRICS=0`, `cppboost` profiling additionally scrapes the
+service while load is active and writes
 `.artifacts/cppboost.<service>.runtime-metrics.json`. Each timestamped sample
 contains `runtime_active_work`, `runtime_worker_utilization` and
 `runtime_event_loop_lag_seconds`. Use this time series together with the
 flamegraph and load-generator JSON to distinguish CPU saturation from an idle
-or blocked event loop. A missing time series fails the profiling run instead
-of silently producing an incomplete artifact set.
+or blocked event loop. In that opt-in mode, a missing time series fails the
+profiling run instead of silently producing an incomplete artifact set.
 
 Runtime utilization is sampled from the worker threads' CPU clocks and event
 loop lag from one periodic Asio timer. The runtime does not wrap every Asio or
@@ -334,6 +334,20 @@ diagnostic gates. Only then does it capture the common 2-core, 6-loadgen-core,
 flamegraphs, load results, runtime samples and framework/native reports are
 uploaded together as the `typescript-profiling-<run-id>` artifact for 30 days.
 Local development profiles remain ignored under `.artifacts/`.
+
+Before warm-up or sampling, framework profiles validate the selected generated
+graph and compare it with `/status/graph` from the actually running services.
+This prevents a stale image or a `current` graph from being reported as a
+`function-call` profile (and vice versa). Native baselines have no ServiceLib
+graph and are intentionally excluded from this assertion.
+
+Profiling defaults to `SERVICELIB_NOOP_LOGS=1`,
+`SERVICELIB_NOOP_METRICS=1`, and `SERVICELIB_NOOP_TRACING=1`, so application
+telemetry does not contaminate CPU samples. Set the corresponding
+`PROFILING_NOOP_*` variable to `0` only for an explicit telemetry-cost
+experiment. The merged Compose configuration is validated before any image is
+built or service is started; Python sampling defaults to 100 Hz and perf to
+997 Hz.
 
 ```bash
 python3 examples/run.py --skip-build   # reuse already-built images
