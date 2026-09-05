@@ -10,7 +10,7 @@ import dependency_command
 
 class DependencyCommandTest(unittest.TestCase):
     def test_retries_transient_network_failure(self) -> None:
-        failed = mock.Mock(stdout=iter(["context deadline exceeded\n"]))
+        failed = mock.Mock(stdout=iter(["502 Bad Gateway\n"]))
         failed.wait.return_value = 1
         passed = mock.Mock(stdout=iter(["done\n"]))
         passed.wait.return_value = 0
