@@ -170,6 +170,31 @@ class TypeScriptProfilingTest(unittest.TestCase):
                         replace(base, example=example), "orderservice", 9091
                     )
 
+    def test_live_profile_accepts_omitted_default_link_semantics(self) -> None:
+        base = next(
+            language for language in profiling.LANGUAGES
+            if language.name == "go"
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            example = Path(directory)
+            graph = example / "orderservice/graph"
+            graph.mkdir(parents=True)
+            (graph / "orderservice.generated.yaml").write_text(
+                "callSemantics: FunctionCall\n"
+            )
+            response = mock.MagicMock()
+            response.__enter__.return_value = response
+            response.read.return_value = (
+                b"services:\n  orderService:\n"
+                b"    defaultCallSemantics: FunctionCall\nlinks: []\n"
+            )
+            with mock.patch.object(
+                profiling.urllib.request, "urlopen", return_value=response
+            ):
+                profiling.verify_live_service_graph_profile(
+                    replace(base, example=example), "orderservice", 9091
+                )
+
     def test_owned_compose_external_images_use_registry_contract(self) -> None:
         common = (profiling.PROFILING_DIR / "compose.common.yml").read_text()
         native = (
