@@ -95,9 +95,34 @@ case "$tool" in
     if [ "$pyspy_nonblocking" != "0" ]; then
       pyspy_mode_args=(--nonblocking)
     fi
-    timeout --signal=INT --kill-after=10 "$pyspy_timeout" \
+    echo "profile.sh: py-spy diagnostics: version=$(py-spy --version 2>&1), target_pid=$pid, target_pattern=$pattern, sample_duration=${duration}s, sample_rate=${pyspy_rate}Hz, nonblocking=$pyspy_nonblocking, timeout=${pyspy_timeout}s, kill_grace=10s, output=$folded_output" >&2
+    echo "profile.sh: py-spy target before sampling: $(ps -o pid=,ppid=,stat=,etime=,args= -p "$pid" 2>&1 || true)" >&2
+    pyspy_started_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    set +e
+    timeout --verbose --signal=INT --kill-after=10 "$pyspy_timeout" \
       py-spy record -f raw -o "$folded_output" -p "$pid" -d "$duration" \
         --rate "$pyspy_rate" "${pyspy_mode_args[@]}"
+    pyspy_exit_code=$?
+    set -e
+    pyspy_finished_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    if [ -f "$folded_output" ]; then
+      pyspy_output_bytes="$(wc -c < "$folded_output" | tr -d ' ')"
+      pyspy_output_lines="$(wc -l < "$folded_output" | tr -d ' ')"
+    else
+      pyspy_output_bytes=0
+      pyspy_output_lines=0
+    fi
+    echo "profile.sh: py-spy finished: exit_code=$pyspy_exit_code, started_at=$pyspy_started_at, finished_at=$pyspy_finished_at, output_exists=$([ -f "$folded_output" ] && echo yes || echo no), output_bytes=$pyspy_output_bytes, output_lines=$pyspy_output_lines, target_alive=$([ -d "/proc/$pid" ] && echo yes || echo no)" >&2
+    if [ "$pyspy_exit_code" -eq 124 ]; then
+      echo "profile.sh: py-spy exceeded the ${pyspy_timeout}s wall-clock timeout and exited after SIGINT" >&2
+    elif [ "$pyspy_exit_code" -eq 137 ]; then
+      echo "profile.sh: py-spy exceeded the ${pyspy_timeout}s wall-clock timeout and did not exit during the 10s SIGINT grace period; timeout sent SIGKILL" >&2
+    elif [ "$pyspy_exit_code" -ne 0 ]; then
+      echo "profile.sh: py-spy failed with exit code $pyspy_exit_code before a complete profile was produced" >&2
+    fi
+    if [ "$pyspy_exit_code" -ne 0 ]; then
+      exit "$pyspy_exit_code"
+    fi
     ;;
   node-cpu)
     /usr/local/bin/node_inspector_profile.py \
