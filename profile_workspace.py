@@ -66,7 +66,9 @@ def copy_example(source: Path, destination: Path) -> None:
             ".ruff_cache",
             ".venv",
             "bin",
-            "build*",
+            "build",
+            "build-*",
+            "build_*",
             "dist*",
             "node_modules",
             "target",
@@ -84,7 +86,7 @@ def copy_framework(source: Path, destination: Path) -> None:
         ignore=shutil.ignore_patterns(
             ".git", ".artifacts", ".cache", ".ccache", ".idea",
             ".mypy_cache", ".pytest_cache", ".ruff_cache",
-            "build*", "dist*", "node_modules", "target", ".venv",
+            "build", "build-*", "build_*", "dist*", "node_modules", "target", ".venv",
             "__pycache__",
         ),
     )
