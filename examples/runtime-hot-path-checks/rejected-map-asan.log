@@ -1,0 +1,6 @@
+Running main() from /source/cppboostservicelib/build/debug/_deps/googletest-src/googletest/src/gtest_main.cc
+Note: Google Test filter = RotatingMap.SupportsMoveOnlyValuesAndConcurrentRotation
+[==========] Running 1 test from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 1 test from RotatingMap
+[ RUN      ] RotatingMap.SupportsMoveOnlyValuesAndConcurrentRotation

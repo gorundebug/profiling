@@ -1,0 +1,67 @@
+[ 50%] Building CXX object CMakeFiles/custom_tests.dir/source/cppservicelib/tests/custom_kafka_endpoints_test.cpp.o
+In file included from /source/cppservicelib/include/servicelib/runtime/detail/kafka_admin.hpp:13,
+                 from /source/cppservicelib/include/servicelib/datasink/kafka/userver.hpp:34,
+                 from /source/cppservicelib/tests/custom_kafka_endpoints_test.cpp:12:
+/conan/p/b/librd24df68b1db7ce/p/include/librdkafka/rdkafka.h:8404:1: warning: type qualifiers ignored on function return type [-Wignored-qualifiers]
+ 8404 | const int rd_kafka_TopicPartitionInfo_partition(
+      | ^~~~~
+[100%] Linking CXX executable custom_tests
+[100%] Built target custom_tests
+[==========] Running 17 tests from 6 test suites.
+[----------] Global test environment set-up.
+[----------] 3 tests from CustomDataSource
+[ RUN      ] CustomDataSource.RunsProducerAndHandlerLifecycle
+[       OK ] CustomDataSource.RunsProducerAndHandlerLifecycle (26 ms)
+[ RUN      ] CustomDataSource.SupportsMultiPushAndPersistentResultCallback
+[       OK ] CustomDataSource.SupportsMultiPushAndPersistentResultCallback (2 ms)
+[ RUN      ] CustomDataSource.CorrelatesPipelineResultUsingStreamContext
+[       OK ] CustomDataSource.CorrelatesPipelineResultUsingStreamContext (1 ms)
+[----------] 3 tests from CustomDataSource (30 ms total)
+
+[----------] 2 tests from CustomDataSink
+[ RUN      ] CustomDataSink.PreservesLifecycleAndCollectsResult
+[       OK ] CustomDataSink.PreservesLifecycleAndCollectsResult (1 ms)
+[ RUN      ] CustomDataSink.UnsampledRequestDoesNotResolveTracingConfiguration
+[       OK ] CustomDataSink.UnsampledRequestDoesNotResolveTracingConfiguration (2 ms)
+[----------] 2 tests from CustomDataSink (3 ms total)
+
+[----------] 4 tests from KafkaDataSink
+[ RUN      ] KafkaDataSink.SendsThroughAdapterAndCollectsDeliveryResult
+[       OK ] KafkaDataSink.SendsThroughAdapterAndCollectsDeliveryResult (2 ms)
+[ RUN      ] KafkaDataSink.DoesNotSelectPartitionForSkippedMessage
+[       OK ] KafkaDataSink.DoesNotSelectPartitionForSkippedMessage (1 ms)
+[ RUN      ] KafkaDataSink.PassesPartitionFailureAsDeliveryError
+[       OK ] KafkaDataSink.PassesPartitionFailureAsDeliveryError (2 ms)
+[ RUN      ] KafkaDataSink.PassesAsyncDeliveryFailureToCallback
+[       OK ] KafkaDataSink.PassesAsyncDeliveryFailureToCallback (1 ms)
+[----------] 4 tests from KafkaDataSink (8 ms total)
+
+[----------] 1 test from KafkaContext
+[ RUN      ] KafkaContext.RestoresCanonicalPropagationHeaders
+[       OK ] KafkaContext.RestoresCanonicalPropagationHeaders (1 ms)
+[----------] 1 test from KafkaContext (1 ms total)
+
+[----------] 3 tests from KafkaDataSource
+[ RUN      ] KafkaDataSource.CopiesRecordAndExposesUserverCommit
+[       OK ] KafkaDataSource.CopiesRecordAndExposesUserverCommit (1 ms)
+[ RUN      ] KafkaDataSource.RetainsCallbackAndRejectsResultsAfterCompletion
+[       OK ] KafkaDataSource.RetainsCallbackAndRejectsResultsAfterCompletion (2 ms)
+[ RUN      ] KafkaDataSource.StopCancelsPendingInlineMessageBeforeConsumerStop
+[       OK ] KafkaDataSource.StopCancelsPendingInlineMessageBeforeConsumerStop (1 ms)
+[----------] 3 tests from KafkaDataSource (5 ms total)
+
+[----------] 4 tests from KafkaAdmin
+[ RUN      ] KafkaAdmin.DisabledEndpointDoesNotContactBroker
+[       OK ] KafkaAdmin.DisabledEndpointDoesNotContactBroker (1 ms)
+[ RUN      ] KafkaAdmin.CreateTopicFalseDoesNotContactBroker
+[       OK ] KafkaAdmin.CreateTopicFalseDoesNotContactBroker (1 ms)
+[ RUN      ] KafkaAdmin.ValidatesTopicAndBrokersBeforeConnecting
+[       OK ] KafkaAdmin.ValidatesTopicAndBrokersBeforeConnecting (0 ms)
+[ RUN      ] KafkaAdmin.ReadsActualPartitionCountFromBrokerMetadata
+%5|1788978598.046|CONFWARN|rdkafka#producer-1| [thrd:app]: No `bootstrap.servers` configured: client will not be able to connect to Kafka cluster
+[       OK ] KafkaAdmin.ReadsActualPartitionCountFromBrokerMetadata (4 ms)
+[----------] 4 tests from KafkaAdmin (8 ms total)
+
+[----------] Global test environment tear-down
+[==========] 17 tests from 6 test suites ran. (57 ms total)
+[  PASSED  ] 17 tests.

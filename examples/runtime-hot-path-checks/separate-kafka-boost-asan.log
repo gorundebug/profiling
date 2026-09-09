@@ -1,0 +1,77 @@
+[ 33%] Built target gtest
+[ 66%] Built target gtest_main
+[ 83%] Building CXX object CMakeFiles/kafka_tests.dir/source/cppboostservicelib/tests/kafka_endpoints_test.cpp.o
+[100%] Linking CXX executable kafka_tests
+[100%] Built target kafka_tests
+Running main() from /source/cppboostservicelib/build/debug/_deps/googletest-src/googletest/src/gtest_main.cc
+[==========] Running 19 tests from 5 test suites.
+[----------] Global test environment set-up.
+[----------] 8 tests from KafkaDataSink
+[ RUN      ] KafkaDataSink.SendsThroughAdapterAndCollectsDeliveryResult
+[       OK ] KafkaDataSink.SendsThroughAdapterAndCollectsDeliveryResult (2 ms)
+[ RUN      ] KafkaDataSink.DisabledEndpointDoesNotStartProducer
+[       OK ] KafkaDataSink.DisabledEndpointDoesNotStartProducer (0 ms)
+[ RUN      ] KafkaDataSink.DoesNotSelectPartitionForSkippedMessage
+[       OK ] KafkaDataSink.DoesNotSelectPartitionForSkippedMessage (0 ms)
+[ RUN      ] KafkaDataSink.PassesPartitionFailureAsDeliveryError
+[       OK ] KafkaDataSink.PassesPartitionFailureAsDeliveryError (0 ms)
+[ RUN      ] KafkaDataSink.MarshalsAsyncDeliveryThroughAsioExecutor
+[       OK ] KafkaDataSink.MarshalsAsyncDeliveryThroughAsioExecutor (1 ms)
+[ RUN      ] KafkaDataSink.RequestsProducerStopBeforeJoiningDeliveryTasks
+[       OK ] KafkaDataSink.RequestsProducerStopBeforeJoiningDeliveryTasks (1 ms)
+[ RUN      ] KafkaDataSink.MapsDeliveryFailureToErrorOutputAndEndRequest
+[       OK ] KafkaDataSink.MapsDeliveryFailureToErrorOutputAndEndRequest (0 ms)
+[ RUN      ] KafkaDataSink.PassesAsyncDeliveryFailureToCallback
+[       OK ] KafkaDataSink.PassesAsyncDeliveryFailureToCallback (1 ms)
+[----------] 8 tests from KafkaDataSink (9 ms total)
+
+[----------] 1 test from KafkaContext
+[ RUN      ] KafkaContext.RestoresCanonicalPropagationHeaders
+[       OK ] KafkaContext.RestoresCanonicalPropagationHeaders (0 ms)
+[----------] 1 test from KafkaContext (0 ms total)
+
+[----------] 4 tests from KafkaDataSource
+[ RUN      ] KafkaDataSource.ExposesCommitAndMarkMessageOperations
+[       OK ] KafkaDataSource.ExposesCommitAndMarkMessageOperations (0 ms)
+[ RUN      ] KafkaDataSource.CopiesRecordAndExposesCommit
+[       OK ] KafkaDataSource.CopiesRecordAndExposesCommit (1 ms)
+[ RUN      ] KafkaDataSource.RetainsCallbackAndRejectsResultsAfterCompletion
+[       OK ] KafkaDataSource.RetainsCallbackAndRejectsResultsAfterCompletion (1 ms)
+[ RUN      ] KafkaDataSource.StopCancelsPendingInlineMessageBeforeConsumerStop
+[       OK ] KafkaDataSource.StopCancelsPendingInlineMessageBeforeConsumerStop (1 ms)
+[----------] 4 tests from KafkaDataSource (5 ms total)
+
+[----------] 3 tests from LibrdkafkaClients
+[ RUN      ] LibrdkafkaClients.ProduceConsumeAndCommitAgainstBrokerProtocol
+%5|1788978599.855|CONFWARN|rdkafka#producer-1| [thrd:app]: No `bootstrap.servers` configured: client will not be able to connect to Kafka cluster
+[       OK ] LibrdkafkaClients.ProduceConsumeAndCommitAgainstBrokerProtocol (3119 ms)
+[ RUN      ] LibrdkafkaClients.PreservesPartitionOrderAndRunsPartitionsConcurrently
+%5|1788978602.974|CONFWARN|rdkafka#producer-4| [thrd:app]: No `bootstrap.servers` configured: client will not be able to connect to Kafka cluster
+[       OK ] LibrdkafkaClients.PreservesPartitionOrderAndRunsPartitionsConcurrently (3254 ms)
+[ RUN      ] LibrdkafkaClients.BrokerLossReturnsErrorAndConsumerRemainsStoppable
+%5|1788978606.230|CONFWARN|rdkafka#producer-7| [thrd:app]: No `bootstrap.servers` configured: client will not be able to connect to Kafka cluster
+%6|1788978607.233|FAIL|rdkafka#producer-8| [thrd:127.0.0.1:38313/bootstrap]: 127.0.0.1:38313/1: Disconnected: verify that security.protocol is correctly configured, broker might require SASL authentication (after 1001ms in state UP)
+%3|1788978607.233|ERROR|rdkafka#producer-8| [thrd:127.0.0.1:38313/bootstrap]: 1/1 brokers are down
+%3|1788978607.234|ERROR|rdkafka#producer-8| [thrd:app]: rdkafka#producer-8: 127.0.0.1:38313/1: Disconnected: verify that security.protocol is correctly configured, broker might require SASL authentication (after 1001ms in state UP)
+%3|1788978607.234|FAIL|rdkafka#producer-8| [thrd:127.0.0.1:38313/bootstrap]: 127.0.0.1:38313/1: Connect to ipv4#127.0.0.1:38313 failed: Connection refused (after 0ms in state CONNECT)
+%3|1788978607.234|ERROR|rdkafka#producer-8| [thrd:app]: rdkafka#producer-8: 127.0.0.1:38313/1: Connect to ipv4#127.0.0.1:38313 failed: Connection refused (after 0ms in state CONNECT)
+%3|1788978607.559|FAIL|rdkafka#producer-8| [thrd:127.0.0.1:38313/bootstrap]: 127.0.0.1:38313/1: Connect to ipv4#127.0.0.1:38313 failed: Connection refused (after 0ms in state CONNECT, 1 identical error(s) suppressed)
+%3|1788978607.559|ERROR|rdkafka#producer-8| [thrd:app]: rdkafka#producer-8: 127.0.0.1:38313/1: Connect to ipv4#127.0.0.1:38313 failed: Connection refused (after 0ms in state CONNECT, 1 identical error(s) suppressed)
+%3|1788978609.240|FAIL|rdkafka#consumer-9| [thrd:127.0.0.1:38313/bootstrap]: 127.0.0.1:38313/bootstrap: Connect to ipv4#127.0.0.1:38313 failed: Connection refused (after 0ms in state CONNECT)
+%3|1788978609.240|ERROR|rdkafka#consumer-9| [thrd:127.0.0.1:38313/bootstrap]: 1/1 brokers are down
+%3|1788978609.240|ERROR|rdkafka#consumer-9| [thrd:app]: rdkafka#consumer-9: 127.0.0.1:38313/bootstrap: Connect to ipv4#127.0.0.1:38313 failed: Connection refused (after 0ms in state CONNECT)
+[       OK ] LibrdkafkaClients.BrokerLossReturnsErrorAndConsumerRemainsStoppable (3623 ms)
+[----------] 3 tests from LibrdkafkaClients (9997 ms total)
+
+[----------] 3 tests from LibrdkafkaAdmin
+[ RUN      ] LibrdkafkaAdmin.DisabledEndpointDoesNotContactBroker
+[       OK ] LibrdkafkaAdmin.DisabledEndpointDoesNotContactBroker (0 ms)
+[ RUN      ] LibrdkafkaAdmin.CreateTopicFalseDoesNotContactBroker
+[       OK ] LibrdkafkaAdmin.CreateTopicFalseDoesNotContactBroker (0 ms)
+[ RUN      ] LibrdkafkaAdmin.ValidatesTopicAndBrokersBeforeConnecting
+[       OK ] LibrdkafkaAdmin.ValidatesTopicAndBrokersBeforeConnecting (0 ms)
+[----------] 3 tests from LibrdkafkaAdmin (0 ms total)
+
+[----------] Global test environment tear-down
+[==========] 19 tests from 5 test suites ran. (10013 ms total)
+[  PASSED  ] 19 tests.

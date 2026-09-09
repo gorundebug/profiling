@@ -1,0 +1,398 @@
+[ 33%] Built target gtest
+[ 66%] Built target gtest_main
+[ 83%] Building CXX object CMakeFiles/grpc_tests.dir/source/cppboostservicelib/tests/grpc_endpoints_test.cpp.o
+[100%] Linking CXX executable grpc_tests
+[100%] Built target grpc_tests
+Running main() from /source/cppboostservicelib/build/debug/_deps/googletest-src/googletest/src/gtest_main.cc
+[==========] Running 16 tests from 4 test suites.
+[----------] Global test environment set-up.
+[----------] 2 tests from GrpcDataSource
+[ RUN      ] GrpcDataSource.RetainsCallbackAcrossResults
+[       OK ] GrpcDataSource.RetainsCallbackAcrossResults (2 ms)
+[ RUN      ] GrpcDataSource.SupportsAllFourMethodTypesAndCorrelation
+[       OK ] GrpcDataSource.SupportsAllFourMethodTypesAndCorrelation (40 ms)
+[----------] 2 tests from GrpcDataSource (42 ms total)
+
+[----------] 1 test from GrpcTracing
+[ RUN      ] GrpcTracing.RequiresExplicitSampledTraceParent
+[       OK ] GrpcTracing.RequiresExplicitSampledTraceParent (0 ms)
+[----------] 1 test from GrpcTracing (0 ms total)
+
+[----------] 1 test from GrpcDataSink
+[ RUN      ] GrpcDataSink.SupportsAllFourMethodTypesAndStreamIdSessions
+[       OK ] GrpcDataSink.SupportsAllFourMethodTypesAndStreamIdSessions (64 ms)
+[----------] 1 test from GrpcDataSink (64 ms total)
+
+[----------] 12 tests from GrpcStreamingLifecycle
+[ RUN      ] GrpcStreamingLifecycle.ClientWaitersAndCompletionDoNotBlock
+[       OK ] GrpcStreamingLifecycle.ClientWaitersAndCompletionDoNotBlock (20 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiWaitersAndCompletionDoNotBlock
+[       OK ] GrpcStreamingLifecycle.BidiWaitersAndCompletionDoNotBlock (19 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientStopIncludesInitializingSession
+[       OK ] GrpcStreamingLifecycle.ClientStopIncludesInitializingSession (72 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiStopIncludesInitializingSession
+[       OK ] GrpcStreamingLifecycle.BidiStopIncludesInitializingSession (76 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientCompletionInsideStart
+[       OK ] GrpcStreamingLifecycle.ClientCompletionInsideStart (31 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiCompletionInsideStart
+[       OK ] GrpcStreamingLifecycle.BidiCompletionInsideStart (27 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientCompletionInsideDone
+[       OK ] GrpcStreamingLifecycle.ClientCompletionInsideDone (26 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiCompletionInsideDone
+[       OK ] GrpcStreamingLifecycle.BidiCompletionInsideDone (26 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientResponseDrainsBeforeEnd
+[       OK ] GrpcStreamingLifecycle.ClientResponseDrainsBeforeEnd (22 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiResponseDrainsBeforeEnd
+[       OK ] GrpcStreamingLifecycle.BidiResponseDrainsBeforeEnd (22 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientStartFailureDrains
+[       OK ] GrpcStreamingLifecycle.ClientStartFailureDrains (23 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiStartFailureDrains
+[       OK ] GrpcStreamingLifecycle.BidiStartFailureDrains (0 ms)
+[----------] 12 tests from GrpcStreamingLifecycle (372 ms total)
+
+[----------] Global test environment tear-down
+[==========] 16 tests from 4 test suites ran. (483 ms total)
+[  PASSED  ] 16 tests.
+Running main() from /source/cppboostservicelib/build/debug/_deps/googletest-src/googletest/src/gtest_main.cc
+
+Repeating all tests (iteration 1) . . .
+
+Note: Google Test filter = GrpcStreamingLifecycle.*
+[==========] Running 12 tests from 1 test suite.
+[----------] Global test environment set-up.
+[----------] 12 tests from GrpcStreamingLifecycle
+[ RUN      ] GrpcStreamingLifecycle.ClientWaitersAndCompletionDoNotBlock
+[       OK ] GrpcStreamingLifecycle.ClientWaitersAndCompletionDoNotBlock (3 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiWaitersAndCompletionDoNotBlock
+[       OK ] GrpcStreamingLifecycle.BidiWaitersAndCompletionDoNotBlock (1 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientStopIncludesInitializingSession
+[       OK ] GrpcStreamingLifecycle.ClientStopIncludesInitializingSession (55 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiStopIncludesInitializingSession
+[       OK ] GrpcStreamingLifecycle.BidiStopIncludesInitializingSession (55 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientCompletionInsideStart
+[       OK ] GrpcStreamingLifecycle.ClientCompletionInsideStart (2 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiCompletionInsideStart
+[       OK ] GrpcStreamingLifecycle.BidiCompletionInsideStart (30 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientCompletionInsideDone
+[       OK ] GrpcStreamingLifecycle.ClientCompletionInsideDone (25 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiCompletionInsideDone
+[       OK ] GrpcStreamingLifecycle.BidiCompletionInsideDone (23 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientResponseDrainsBeforeEnd
+[       OK ] GrpcStreamingLifecycle.ClientResponseDrainsBeforeEnd (20 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiResponseDrainsBeforeEnd
+[       OK ] GrpcStreamingLifecycle.BidiResponseDrainsBeforeEnd (21 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientStartFailureDrains
+[       OK ] GrpcStreamingLifecycle.ClientStartFailureDrains (21 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiStartFailureDrains
+[       OK ] GrpcStreamingLifecycle.BidiStartFailureDrains (0 ms)
+[----------] 12 tests from GrpcStreamingLifecycle (263 ms total)
+
+[==========] 12 tests from 1 test suite ran. (263 ms total)
+[  PASSED  ] 12 tests.
+
+Repeating all tests (iteration 2) . . .
+
+Note: Google Test filter = GrpcStreamingLifecycle.*
+[==========] Running 12 tests from 1 test suite.
+[----------] 12 tests from GrpcStreamingLifecycle
+[ RUN      ] GrpcStreamingLifecycle.ClientWaitersAndCompletionDoNotBlock
+[       OK ] GrpcStreamingLifecycle.ClientWaitersAndCompletionDoNotBlock (1 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiWaitersAndCompletionDoNotBlock
+[       OK ] GrpcStreamingLifecycle.BidiWaitersAndCompletionDoNotBlock (0 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientStopIncludesInitializingSession
+[       OK ] GrpcStreamingLifecycle.ClientStopIncludesInitializingSession (53 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiStopIncludesInitializingSession
+[       OK ] GrpcStreamingLifecycle.BidiStopIncludesInitializingSession (64 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientCompletionInsideStart
+[       OK ] GrpcStreamingLifecycle.ClientCompletionInsideStart (27 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiCompletionInsideStart
+[       OK ] GrpcStreamingLifecycle.BidiCompletionInsideStart (24 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientCompletionInsideDone
+[       OK ] GrpcStreamingLifecycle.ClientCompletionInsideDone (22 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiCompletionInsideDone
+[       OK ] GrpcStreamingLifecycle.BidiCompletionInsideDone (23 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientResponseDrainsBeforeEnd
+[       OK ] GrpcStreamingLifecycle.ClientResponseDrainsBeforeEnd (21 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiResponseDrainsBeforeEnd
+[       OK ] GrpcStreamingLifecycle.BidiResponseDrainsBeforeEnd (22 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientStartFailureDrains
+[       OK ] GrpcStreamingLifecycle.ClientStartFailureDrains (23 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiStartFailureDrains
+[       OK ] GrpcStreamingLifecycle.BidiStartFailureDrains (0 ms)
+[----------] 12 tests from GrpcStreamingLifecycle (287 ms total)
+
+[==========] 12 tests from 1 test suite ran. (287 ms total)
+[  PASSED  ] 12 tests.
+
+Repeating all tests (iteration 3) . . .
+
+Note: Google Test filter = GrpcStreamingLifecycle.*
+[==========] Running 12 tests from 1 test suite.
+[----------] 12 tests from GrpcStreamingLifecycle
+[ RUN      ] GrpcStreamingLifecycle.ClientWaitersAndCompletionDoNotBlock
+[       OK ] GrpcStreamingLifecycle.ClientWaitersAndCompletionDoNotBlock (1 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiWaitersAndCompletionDoNotBlock
+[       OK ] GrpcStreamingLifecycle.BidiWaitersAndCompletionDoNotBlock (1 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientStopIncludesInitializingSession
+[       OK ] GrpcStreamingLifecycle.ClientStopIncludesInitializingSession (68 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiStopIncludesInitializingSession
+[       OK ] GrpcStreamingLifecycle.BidiStopIncludesInitializingSession (77 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientCompletionInsideStart
+[       OK ] GrpcStreamingLifecycle.ClientCompletionInsideStart (28 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiCompletionInsideStart
+[       OK ] GrpcStreamingLifecycle.BidiCompletionInsideStart (25 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientCompletionInsideDone
+[       OK ] GrpcStreamingLifecycle.ClientCompletionInsideDone (25 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiCompletionInsideDone
+[       OK ] GrpcStreamingLifecycle.BidiCompletionInsideDone (26 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientResponseDrainsBeforeEnd
+[       OK ] GrpcStreamingLifecycle.ClientResponseDrainsBeforeEnd (23 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiResponseDrainsBeforeEnd
+[       OK ] GrpcStreamingLifecycle.BidiResponseDrainsBeforeEnd (23 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientStartFailureDrains
+[       OK ] GrpcStreamingLifecycle.ClientStartFailureDrains (22 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiStartFailureDrains
+[       OK ] GrpcStreamingLifecycle.BidiStartFailureDrains (0 ms)
+[----------] 12 tests from GrpcStreamingLifecycle (325 ms total)
+
+[==========] 12 tests from 1 test suite ran. (325 ms total)
+[  PASSED  ] 12 tests.
+
+Repeating all tests (iteration 4) . . .
+
+Note: Google Test filter = GrpcStreamingLifecycle.*
+[==========] Running 12 tests from 1 test suite.
+[----------] 12 tests from GrpcStreamingLifecycle
+[ RUN      ] GrpcStreamingLifecycle.ClientWaitersAndCompletionDoNotBlock
+[       OK ] GrpcStreamingLifecycle.ClientWaitersAndCompletionDoNotBlock (1 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiWaitersAndCompletionDoNotBlock
+[       OK ] GrpcStreamingLifecycle.BidiWaitersAndCompletionDoNotBlock (16 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientStopIncludesInitializingSession
+[       OK ] GrpcStreamingLifecycle.ClientStopIncludesInitializingSession (74 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiStopIncludesInitializingSession
+[       OK ] GrpcStreamingLifecycle.BidiStopIncludesInitializingSession (75 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientCompletionInsideStart
+[       OK ] GrpcStreamingLifecycle.ClientCompletionInsideStart (30 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiCompletionInsideStart
+[       OK ] GrpcStreamingLifecycle.BidiCompletionInsideStart (26 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientCompletionInsideDone
+[       OK ] GrpcStreamingLifecycle.ClientCompletionInsideDone (25 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiCompletionInsideDone
+[       OK ] GrpcStreamingLifecycle.BidiCompletionInsideDone (25 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientResponseDrainsBeforeEnd
+[       OK ] GrpcStreamingLifecycle.ClientResponseDrainsBeforeEnd (22 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiResponseDrainsBeforeEnd
+[       OK ] GrpcStreamingLifecycle.BidiResponseDrainsBeforeEnd (22 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientStartFailureDrains
+[       OK ] GrpcStreamingLifecycle.ClientStartFailureDrains (22 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiStartFailureDrains
+[       OK ] GrpcStreamingLifecycle.BidiStartFailureDrains (4 ms)
+[----------] 12 tests from GrpcStreamingLifecycle (351 ms total)
+
+[==========] 12 tests from 1 test suite ran. (351 ms total)
+[  PASSED  ] 12 tests.
+
+Repeating all tests (iteration 5) . . .
+
+Note: Google Test filter = GrpcStreamingLifecycle.*
+[==========] Running 12 tests from 1 test suite.
+[----------] 12 tests from GrpcStreamingLifecycle
+[ RUN      ] GrpcStreamingLifecycle.ClientWaitersAndCompletionDoNotBlock
+[       OK ] GrpcStreamingLifecycle.ClientWaitersAndCompletionDoNotBlock (10 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiWaitersAndCompletionDoNotBlock
+[       OK ] GrpcStreamingLifecycle.BidiWaitersAndCompletionDoNotBlock (19 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientStopIncludesInitializingSession
+[       OK ] GrpcStreamingLifecycle.ClientStopIncludesInitializingSession (71 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiStopIncludesInitializingSession
+[       OK ] GrpcStreamingLifecycle.BidiStopIncludesInitializingSession (75 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientCompletionInsideStart
+[       OK ] GrpcStreamingLifecycle.ClientCompletionInsideStart (30 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiCompletionInsideStart
+[       OK ] GrpcStreamingLifecycle.BidiCompletionInsideStart (26 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientCompletionInsideDone
+[       OK ] GrpcStreamingLifecycle.ClientCompletionInsideDone (25 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiCompletionInsideDone
+[       OK ] GrpcStreamingLifecycle.BidiCompletionInsideDone (26 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientResponseDrainsBeforeEnd
+[       OK ] GrpcStreamingLifecycle.ClientResponseDrainsBeforeEnd (22 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiResponseDrainsBeforeEnd
+[       OK ] GrpcStreamingLifecycle.BidiResponseDrainsBeforeEnd (22 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientStartFailureDrains
+[       OK ] GrpcStreamingLifecycle.ClientStartFailureDrains (22 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiStartFailureDrains
+[       OK ] GrpcStreamingLifecycle.BidiStartFailureDrains (13 ms)
+[----------] 12 tests from GrpcStreamingLifecycle (370 ms total)
+
+[==========] 12 tests from 1 test suite ran. (370 ms total)
+[  PASSED  ] 12 tests.
+
+Repeating all tests (iteration 6) . . .
+
+Note: Google Test filter = GrpcStreamingLifecycle.*
+[==========] Running 12 tests from 1 test suite.
+[----------] 12 tests from GrpcStreamingLifecycle
+[ RUN      ] GrpcStreamingLifecycle.ClientWaitersAndCompletionDoNotBlock
+[       OK ] GrpcStreamingLifecycle.ClientWaitersAndCompletionDoNotBlock (19 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiWaitersAndCompletionDoNotBlock
+[       OK ] GrpcStreamingLifecycle.BidiWaitersAndCompletionDoNotBlock (21 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientStopIncludesInitializingSession
+[       OK ] GrpcStreamingLifecycle.ClientStopIncludesInitializingSession (71 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiStopIncludesInitializingSession
+[       OK ] GrpcStreamingLifecycle.BidiStopIncludesInitializingSession (75 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientCompletionInsideStart
+[       OK ] GrpcStreamingLifecycle.ClientCompletionInsideStart (31 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiCompletionInsideStart
+[       OK ] GrpcStreamingLifecycle.BidiCompletionInsideStart (27 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientCompletionInsideDone
+[       OK ] GrpcStreamingLifecycle.ClientCompletionInsideDone (25 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiCompletionInsideDone
+[       OK ] GrpcStreamingLifecycle.BidiCompletionInsideDone (26 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientResponseDrainsBeforeEnd
+[       OK ] GrpcStreamingLifecycle.ClientResponseDrainsBeforeEnd (22 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiResponseDrainsBeforeEnd
+[       OK ] GrpcStreamingLifecycle.BidiResponseDrainsBeforeEnd (22 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientStartFailureDrains
+[       OK ] GrpcStreamingLifecycle.ClientStartFailureDrains (23 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiStartFailureDrains
+[       OK ] GrpcStreamingLifecycle.BidiStartFailureDrains (21 ms)
+[----------] 12 tests from GrpcStreamingLifecycle (392 ms total)
+
+[==========] 12 tests from 1 test suite ran. (393 ms total)
+[  PASSED  ] 12 tests.
+
+Repeating all tests (iteration 7) . . .
+
+Note: Google Test filter = GrpcStreamingLifecycle.*
+[==========] Running 12 tests from 1 test suite.
+[----------] 12 tests from GrpcStreamingLifecycle
+[ RUN      ] GrpcStreamingLifecycle.ClientWaitersAndCompletionDoNotBlock
+[       OK ] GrpcStreamingLifecycle.ClientWaitersAndCompletionDoNotBlock (20 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiWaitersAndCompletionDoNotBlock
+[       OK ] GrpcStreamingLifecycle.BidiWaitersAndCompletionDoNotBlock (21 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientStopIncludesInitializingSession
+[       OK ] GrpcStreamingLifecycle.ClientStopIncludesInitializingSession (72 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiStopIncludesInitializingSession
+[       OK ] GrpcStreamingLifecycle.BidiStopIncludesInitializingSession (80 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientCompletionInsideStart
+[       OK ] GrpcStreamingLifecycle.ClientCompletionInsideStart (30 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiCompletionInsideStart
+[       OK ] GrpcStreamingLifecycle.BidiCompletionInsideStart (28 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientCompletionInsideDone
+[       OK ] GrpcStreamingLifecycle.ClientCompletionInsideDone (26 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiCompletionInsideDone
+[       OK ] GrpcStreamingLifecycle.BidiCompletionInsideDone (26 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientResponseDrainsBeforeEnd
+[       OK ] GrpcStreamingLifecycle.ClientResponseDrainsBeforeEnd (22 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiResponseDrainsBeforeEnd
+[       OK ] GrpcStreamingLifecycle.BidiResponseDrainsBeforeEnd (22 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientStartFailureDrains
+[       OK ] GrpcStreamingLifecycle.ClientStartFailureDrains (23 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiStartFailureDrains
+[       OK ] GrpcStreamingLifecycle.BidiStartFailureDrains (23 ms)
+[----------] 12 tests from GrpcStreamingLifecycle (401 ms total)
+
+[==========] 12 tests from 1 test suite ran. (402 ms total)
+[  PASSED  ] 12 tests.
+
+Repeating all tests (iteration 8) . . .
+
+Note: Google Test filter = GrpcStreamingLifecycle.*
+[==========] Running 12 tests from 1 test suite.
+[----------] 12 tests from GrpcStreamingLifecycle
+[ RUN      ] GrpcStreamingLifecycle.ClientWaitersAndCompletionDoNotBlock
+[       OK ] GrpcStreamingLifecycle.ClientWaitersAndCompletionDoNotBlock (21 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiWaitersAndCompletionDoNotBlock
+[       OK ] GrpcStreamingLifecycle.BidiWaitersAndCompletionDoNotBlock (21 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientStopIncludesInitializingSession
+[       OK ] GrpcStreamingLifecycle.ClientStopIncludesInitializingSession (75 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiStopIncludesInitializingSession
+[       OK ] GrpcStreamingLifecycle.BidiStopIncludesInitializingSession (74 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientCompletionInsideStart
+[       OK ] GrpcStreamingLifecycle.ClientCompletionInsideStart (26 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiCompletionInsideStart
+[       OK ] GrpcStreamingLifecycle.BidiCompletionInsideStart (26 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientCompletionInsideDone
+[       OK ] GrpcStreamingLifecycle.ClientCompletionInsideDone (26 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiCompletionInsideDone
+[       OK ] GrpcStreamingLifecycle.BidiCompletionInsideDone (26 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientResponseDrainsBeforeEnd
+[       OK ] GrpcStreamingLifecycle.ClientResponseDrainsBeforeEnd (22 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiResponseDrainsBeforeEnd
+[       OK ] GrpcStreamingLifecycle.BidiResponseDrainsBeforeEnd (23 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientStartFailureDrains
+[       OK ] GrpcStreamingLifecycle.ClientStartFailureDrains (24 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiStartFailureDrains
+[       OK ] GrpcStreamingLifecycle.BidiStartFailureDrains (23 ms)
+[----------] 12 tests from GrpcStreamingLifecycle (396 ms total)
+
+[==========] 12 tests from 1 test suite ran. (398 ms total)
+[  PASSED  ] 12 tests.
+
+Repeating all tests (iteration 9) . . .
+
+Note: Google Test filter = GrpcStreamingLifecycle.*
+[==========] Running 12 tests from 1 test suite.
+[----------] 12 tests from GrpcStreamingLifecycle
+[ RUN      ] GrpcStreamingLifecycle.ClientWaitersAndCompletionDoNotBlock
+[       OK ] GrpcStreamingLifecycle.ClientWaitersAndCompletionDoNotBlock (21 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiWaitersAndCompletionDoNotBlock
+[       OK ] GrpcStreamingLifecycle.BidiWaitersAndCompletionDoNotBlock (23 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientStopIncludesInitializingSession
+[       OK ] GrpcStreamingLifecycle.ClientStopIncludesInitializingSession (72 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiStopIncludesInitializingSession
+[       OK ] GrpcStreamingLifecycle.BidiStopIncludesInitializingSession (72 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientCompletionInsideStart
+[       OK ] GrpcStreamingLifecycle.ClientCompletionInsideStart (26 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiCompletionInsideStart
+[       OK ] GrpcStreamingLifecycle.BidiCompletionInsideStart (25 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientCompletionInsideDone
+[       OK ] GrpcStreamingLifecycle.ClientCompletionInsideDone (26 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiCompletionInsideDone
+[       OK ] GrpcStreamingLifecycle.BidiCompletionInsideDone (26 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientResponseDrainsBeforeEnd
+[       OK ] GrpcStreamingLifecycle.ClientResponseDrainsBeforeEnd (22 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiResponseDrainsBeforeEnd
+[       OK ] GrpcStreamingLifecycle.BidiResponseDrainsBeforeEnd (22 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientStartFailureDrains
+[       OK ] GrpcStreamingLifecycle.ClientStartFailureDrains (24 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiStartFailureDrains
+[       OK ] GrpcStreamingLifecycle.BidiStartFailureDrains (24 ms)
+[----------] 12 tests from GrpcStreamingLifecycle (392 ms total)
+
+[==========] 12 tests from 1 test suite ran. (394 ms total)
+[  PASSED  ] 12 tests.
+
+Repeating all tests (iteration 10) . . .
+
+Note: Google Test filter = GrpcStreamingLifecycle.*
+[==========] Running 12 tests from 1 test suite.
+[----------] 12 tests from GrpcStreamingLifecycle
+[ RUN      ] GrpcStreamingLifecycle.ClientWaitersAndCompletionDoNotBlock
+[       OK ] GrpcStreamingLifecycle.ClientWaitersAndCompletionDoNotBlock (21 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiWaitersAndCompletionDoNotBlock
+[       OK ] GrpcStreamingLifecycle.BidiWaitersAndCompletionDoNotBlock (22 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientStopIncludesInitializingSession
+[       OK ] GrpcStreamingLifecycle.ClientStopIncludesInitializingSession (72 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiStopIncludesInitializingSession
+[       OK ] GrpcStreamingLifecycle.BidiStopIncludesInitializingSession (73 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientCompletionInsideStart
+[       OK ] GrpcStreamingLifecycle.ClientCompletionInsideStart (26 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiCompletionInsideStart
+[       OK ] GrpcStreamingLifecycle.BidiCompletionInsideStart (26 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientCompletionInsideDone
+[       OK ] GrpcStreamingLifecycle.ClientCompletionInsideDone (27 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiCompletionInsideDone
+[       OK ] GrpcStreamingLifecycle.BidiCompletionInsideDone (27 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientResponseDrainsBeforeEnd
+[       OK ] GrpcStreamingLifecycle.ClientResponseDrainsBeforeEnd (24 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiResponseDrainsBeforeEnd
+[       OK ] GrpcStreamingLifecycle.BidiResponseDrainsBeforeEnd (23 ms)
+[ RUN      ] GrpcStreamingLifecycle.ClientStartFailureDrains
+[       OK ] GrpcStreamingLifecycle.ClientStartFailureDrains (25 ms)
+[ RUN      ] GrpcStreamingLifecycle.BidiStartFailureDrains
+[       OK ] GrpcStreamingLifecycle.BidiStartFailureDrains (24 ms)
+[----------] 12 tests from GrpcStreamingLifecycle (399 ms total)
+
+[----------] Global test environment tear-down
+[==========] 12 tests from 1 test suite ran. (401 ms total)
+[  PASSED  ] 12 tests.
