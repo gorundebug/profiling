@@ -304,7 +304,7 @@ class TypeScriptProfilingTest(unittest.TestCase):
             environment = profiling.environment(args, languages[name])
             self.assertEqual(
                 environment["GRPC_SOURCE_CONTEXT"],
-                "https://github.com/grpc/grpc.git#v1.71.0",
+                "https://github.com/grpc/grpc.git#v1.83.1",
             )
             self.assertEqual(
                 environment["ASIO_GRPC_SOURCE_CONTEXT"],
