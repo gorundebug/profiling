@@ -44,7 +44,7 @@ class LanguageLoggingTest(unittest.TestCase):
         )
         contract = {
             "DEPENDENCY_PROXY_DIR": "/cache",
-            "DEPENDENCY_CONAN_REMOTE_URL": "http://proxy/conan-group",
+            "DEPENDENCY_CONAN_REMOTE_URL": "http://proxy/conan-proxy",
             "DEPENDENCY_GITHUB_RAW_URL": "http://proxy/github-raw",
             "GOPROXY": "http://proxy/go-proxy/",
             "NPM_CONFIG_REGISTRY": "http://proxy/npm-proxy/",
