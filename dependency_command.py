@@ -7,6 +7,7 @@ import time
 from collections import deque
 from pathlib import Path
 from typing import Iterable, Sequence, TextIO
+from urllib.parse import urlsplit, urlunsplit
 
 
 TRANSIENT_NETWORK_MARKERS = (
@@ -35,6 +36,40 @@ TRANSIENT_NETWORK_MARKERS = (
     "status_code: 503",
     "status_code: 504",
 )
+
+
+def docker_git_context(
+    environment: dict[str, str], remote_context: str,
+) -> str:
+    """Use the container-reachable Git mirror for a BuildKit context."""
+    if not environment.get("DEPENDENCY_PROXY_DIR"):
+        return remote_context
+    mirror = environment.get("DEPENDENCY_GIT_MIRROR_URL")
+    if not mirror:
+        raise RuntimeError(
+            "proxy mode requires DEPENDENCY_GIT_MIRROR_URL for remote Git contexts"
+        )
+    repository, separator, revision = remote_context.partition("#")
+    if not separator or not revision:
+        raise ValueError(f"Git context must contain a pinned revision: {remote_context}")
+    parsed_repository = urlsplit(repository)
+    if not parsed_repository.hostname or not parsed_repository.path:
+        raise ValueError(f"Git context must use an absolute repository URL: {remote_context}")
+    proxy_host = environment.get("DEPENDENCY_PROXY_HOST", "localhost")
+    docker_host = environment.get(
+        "DEPENDENCY_PROXY_DOCKER_HOST", "host.docker.internal"
+    )
+    parsed_mirror = urlsplit(mirror)
+    mirror_host = parsed_mirror.hostname
+    if mirror_host in {proxy_host, "localhost", "127.0.0.1", "::1"}:
+        netloc = docker_host
+        if parsed_mirror.port is not None:
+            netloc += f":{parsed_mirror.port}"
+        mirror = urlunsplit(parsed_mirror._replace(netloc=netloc))
+    return (
+        f"{mirror.rstrip('/')}/{parsed_repository.hostname}/"
+        f"{parsed_repository.path.lstrip('/')}#{revision}"
+    )
 
 
 def is_transient_network_failure(output: Iterable[str]) -> bool:

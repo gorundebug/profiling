@@ -9,6 +9,22 @@ import dependency_command
 
 
 class DependencyCommandTest(unittest.TestCase):
+    def test_buildkit_git_context_uses_docker_git_mirror(self) -> None:
+        context = dependency_command.docker_git_context(
+            {
+                "DEPENDENCY_PROXY_DIR": "/cache",
+                "DEPENDENCY_PROXY_HOST": "localhost",
+                "DEPENDENCY_PROXY_DOCKER_HOST": "host.docker.internal",
+                "DEPENDENCY_GIT_MIRROR_URL": "http://localhost:18084/cgi-bin/git",
+            },
+            "https://github.com/userver-framework/userver.git#revision",
+        )
+        self.assertEqual(
+            context,
+            "http://host.docker.internal:18084/cgi-bin/git/"
+            "github.com/userver-framework/userver.git#revision",
+        )
+
     def test_retries_transient_network_failure(self) -> None:
         failed = mock.Mock(stdout=iter(["502 Bad Gateway\n"]))
         failed.wait.return_value = 1
