@@ -11,6 +11,22 @@ PROFILING = Path(__file__).resolve().parents[1]
 
 
 class ProfileWorkspaceTest(unittest.TestCase):
+    def test_copy_preserves_build_prefixed_sources_but_ignores_build_trees(self) -> None:
+        profile = runpy.run_path(str(PROFILING / "profile_workspace.py"))
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "source"
+            destination = root / "destination"
+            source.mkdir()
+            (source / "build_substream_result.rs").write_text("source\n")
+            (source / "build-release").mkdir()
+            (source / "build-release/artifact").write_text("generated\n")
+
+            profile["copy_example"](source, destination)
+
+            self.assertTrue((destination / "build_substream_result.rs").is_file())
+            self.assertFalse((destination / "build-release").exists())
+
     def test_archive_generation_passes_canonical_profile_contract(self) -> None:
         profile = runpy.run_path(str(PROFILING / "profile_workspace.py"))
         with tempfile.TemporaryDirectory() as directory:
