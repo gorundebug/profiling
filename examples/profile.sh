@@ -153,6 +153,12 @@ finish_perf_artifacts() {
     --maps "${output}.maps.before.txt" "${output}.maps.after.txt" \
     --cache "$(dirname "$output")/.debug-info-cache" \
     > "${output}.debug-info.json" 2>> "$perf_diagnostics"
+  # libdw can repeatedly decompress embedded DWARF while unwinding samples.
+  # Prepare only our captured copies, preserving build IDs and detached debug
+  # companions; the measured executable and its debug information are untouched.
+  echo "profile.sh: preparing captured debug sections for offline decoding" >&2
+  python3 /usr/local/bin/prepare_perf_symbols.py --root "$perf_symbols" \
+    > "${output}.debug-preparation.json"
   perf_kernel_args=()
   if ! cat /proc/kallsyms > "${output}.kallsyms.txt" 2>> "$perf_diagnostics"; then
     printf 'Kernel symbols unavailable; host security settings were not changed.\n' >> "$perf_diagnostics"

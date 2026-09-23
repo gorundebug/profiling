@@ -85,6 +85,7 @@ COPY profile.sh /usr/local/bin/profile.sh
 COPY perf_addr2line.py /usr/local/lib/perf-symbolizer/addr2line
 COPY validate_perf_script.py /usr/local/bin/validate_perf_script.py
 COPY collect_perf_debug.py /usr/local/bin/collect_perf_debug.py
+COPY prepare_perf_symbols.py /usr/local/bin/prepare_perf_symbols.py
 COPY capture_perf_vdso.py /usr/local/bin/capture_perf_vdso.py
 COPY capture_perf_pac.py /usr/local/bin/capture_perf_pac.py
 COPY --from=perf-builder /capture-pac-mask /usr/local/bin/capture-pac-mask
