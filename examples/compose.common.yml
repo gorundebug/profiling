@@ -58,6 +58,7 @@ services:
     cap_add:
       - SYS_PTRACE
       - SYS_ADMIN
+      - SYSLOG
     security_opt:
       - seccomp:unconfined
     profiles: [profiling]
@@ -81,6 +82,7 @@ services:
     cap_add:
       - SYS_PTRACE
       - SYS_ADMIN
+      - SYSLOG
     security_opt:
       - seccomp:unconfined
     profiles: [profiling]
@@ -104,6 +106,7 @@ services:
     cap_add:
       - SYS_PTRACE
       - SYS_ADMIN
+      - SYSLOG
     security_opt:
       - seccomp:unconfined
     profiles: [profiling]

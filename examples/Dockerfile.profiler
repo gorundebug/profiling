@@ -40,7 +40,7 @@ RUN --mount=type=cache,id=servicegen-apt-lists-${TARGETARCH},target=/var/lib/apt
     --mount=type=cache,id=servicegen-apt-cache-${TARGETARCH},target=/var/cache/apt,sharing=locked \
     apt-get update \
     && apt-get install --yes --no-install-recommends \
-       binutils linux-perf procps perl git curl python3-pip ca-certificates
+       binutils linux-perf procps perl git curl python3-pip ca-certificates util-linux
 
 RUN curl --fail --location --silent --show-error \
       "$DEPENDENCY_GITHUB_RAW_URL/brendangregg/FlameGraph/archive/$FLAMEGRAPH_REVISION.tar.gz" \
@@ -54,12 +54,15 @@ RUN --mount=type=cache,id=servicegen-profiler-pip-v1-${TARGETARCH},target=/root/
     py-spy websocket-client==1.9.0 sourcemap==0.2.1
 
 COPY profile.sh /usr/local/bin/profile.sh
+COPY perf_addr2line.py /usr/local/lib/perf-symbolizer/addr2line
+COPY validate_perf_script.py /usr/local/bin/validate_perf_script.py
 COPY analyze_folded.py /usr/local/bin/analyze_folded.py
 COPY analyze_allocation_stacks.py /usr/local/bin/analyze_allocation_stacks.py
 COPY scheduler_profile.py /usr/local/bin/scheduler_profile.py
 COPY node_inspector_profile.py /usr/local/bin/node_inspector_profile.py
 COPY --from=allocation-builder /liballocation_profile.so /usr/local/lib/liballocation_profile.so
 RUN chmod +x /usr/local/bin/profile.sh /usr/local/bin/analyze_folded.py \
+    /usr/local/lib/perf-symbolizer/addr2line \
     /usr/local/bin/analyze_allocation_stacks.py \
     /usr/local/bin/scheduler_profile.py \
     /usr/local/bin/node_inspector_profile.py

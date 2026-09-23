@@ -79,6 +79,7 @@ prepare_perf_artifacts() {
   {
     perf version
     uname -a
+    printf 'kernel_boot_id=%s\n' "$(cat /proc/sys/kernel/random/boot_id)"
     printf 'pid=%s\ncall_graph=%s\nfrequency=%s\nperiod=%s\nevent=%s\n' \
       "$pid" "$active_call_graph" "$perf_frequency" "$perf_period" "$perf_event"
     printf 'executable=%s\n' "$(readlink "/proc/$pid/exe")"
@@ -87,7 +88,7 @@ prepare_perf_artifacts() {
 
 copy_perf_symbol_file() {
   local relative="$1"
-  if [ -f "$target_root$relative" ] && [ ! -f "$perf_symbols$relative" ]; then
+  if [ -f "$target_root$relative" ]; then
     mkdir -p "$(dirname "$perf_symbols$relative")"
     if ! cp -L -- "$target_root$relative" "$perf_symbols$relative"; then
       printf 'Cannot preserve %s\n' "$relative" >> "$perf_diagnostics"
@@ -129,17 +130,25 @@ finish_perf_artifacts() {
       copy_perf_symbol_file "/usr/lib/debug/.build-id/${build_id:0:2}/${build_id:2}.debug"
     fi
   done < "${output}.buildids.txt"
+  perf_kernel_args=()
   if ! cat /proc/kallsyms > "${output}.kallsyms.txt" 2>> "$perf_diagnostics"; then
     printf 'Kernel symbols unavailable; host security settings were not changed.\n' >> "$perf_diagnostics"
   elif ! awk '$1 !~ /^0+$/ { found=1; exit } END { exit !found }' "${output}.kallsyms.txt"; then
     printf 'Kernel addresses are masked; matching kernel symbols are needed for offline decoding.\n' >> "$perf_diagnostics"
+  else
+    perf_kernel_args=(--kallsyms "${output}.kallsyms.txt")
   fi
-  # Use regular copied paths, not /proc/PID/root. With a live target namespace,
-  # perf 6.1 can pass the unprefixed DSO path to addr2line; the helper then exits
-  # because that path is absent in the profiler container, causing SIGPIPE.
-  # Keep inline expansion enabled and preserve real symbolization failures.
-  perf script --inline --symfs "$perf_symbols" -i "$perf_data" \
+  # Decode offline in a private PID/mount namespace: recorded PIDs must not
+  # cause perf to enter a still-live target mount namespace, where our copied
+  # symbol paths are unavailable. addr2line must use the same root for DSOs
+  # without debug sections, for which perf 6.1 passes an unprefixed filename.
+  PERF_SYMBOL_ROOT="$perf_symbols" PERF_SYMBOL_DIAGNOSTICS="$perf_diagnostics" \
+    PATH="/usr/local/lib/perf-symbolizer:$PATH" \
+    unshare --mount --pid --fork --mount-proc \
+    perf script --inline --symfs "$perf_symbols" "${perf_kernel_args[@]}" -i "$perf_data" \
     > "$perf_script" 2>> "$perf_diagnostics"
+  python3 /usr/local/bin/validate_perf_script.py "$perf_script" \
+    > "${output}.symbolization.json"
   /opt/FlameGraph/stackcollapse-perf.pl "$perf_script" > "$folded_output"
   echo "profile.sh: retained $perf_data, $perf_script and $perf_symbols" >&2
 }

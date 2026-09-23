@@ -358,13 +358,19 @@ For each CPU/off-CPU SVG, the collector retains these adjacent artifacts:
 - `.kallsyms.txt`: kernel symbols visible to the collector (possibly masked).
 - `.perf.metadata.txt`: kernel, perf version, target PID and recording settings.
 - `.symbolization.log`: decoding warnings and unavailable symbol diagnostics.
+- `.symbolization.json`: counts of named and unresolved stack frames (not CPU percentages).
 
 The collector copies mapped binaries through `/proc/PID/root` while the service
 is alive, then decodes with `perf script --inline --symfs <profile>.symbols`.
 Using regular copied paths also lets perf's addr2line subprocess open the
 correct binaries: perf 6.1 can otherwise pass an unprefixed path from the target
-namespace that does not exist inside the profiler container. Inline expansion
-remains enabled; decoding errors are not ignored.
+namespace that does not exist inside the profiler container. A scoped addr2line
+launcher resolves both prefixed binaries and unprefixed libraries against the
+same captured root, never against the profiler's unrelated libraries.
+Decoding runs in a private PID/mount namespace so recorded PIDs cannot redirect
+symbol lookup into the still-live service container. Inline expansion remains
+enabled; decoding errors are not ignored. Profiles without any named user-space
+function frames fail instead of publishing only thread names or kernel frames.
 Copies are made after recording, outside the sampling interval. Keep the
 exact service image as well: deleted mappings, libraries loaded and unloaded
 inside the recording interval, and absent debug packages cannot always be
@@ -374,13 +380,29 @@ To decode again on a compatible Linux perf installation, use absolute paths:
 
 ```bash
 profile=/absolute/path/cppboost.orderservice.flamegraph.svg
-perf script --inline --symfs "$profile.symbols" -i "$profile.perf.data" \
+PERF_SYMBOL_ROOT="$profile.symbols" \
+  PATH="/usr/local/lib/perf-symbolizer:$PATH" \
+  perf script --inline --symfs "$profile.symbols" -i "$profile.perf.data" \
   > "$profile.decoded.script"
 ```
 
+The command above runs inside the profiler image, which supplies the scoped
+addr2line launcher. Rebuild that image after collector changes.
+
+Full C++ inline decoding can take several minutes after sampling finishes.
+The runner allows `max(900, duration_seconds * 32)` seconds for native perf
+finalization; override this bounded wait with `PROFILING_PERF_FINALIZE_TIMEOUT`
+(seconds). It does not change the load duration or sampling window. GNU
+addr2line is retained: alternative tools differ in the stdin delimiter protocol
+used by this perf version and cannot be substituted just to obtain a faster exit.
+
 Missing kernel frames may require the matching Linux kernel image/symbols;
-masked `kallsyms` cannot restore them. The collector does not relax host kernel
-security settings. These raw artifacts can contain sampled stack data, memory
+masked `kallsyms` cannot restore them. Only profiler sidecars receive `CAP_SYSLOG`
+so they can read kernel addresses where the host policy permits. The decoder
+uses the captured non-masked table via `--kallsyms`; the kernel boot ID is also
+recorded. Never substitute a table from another boot just because the kernel
+version matches. The collector does not relax host kernel security settings or
+change service capabilities. These raw artifacts can contain sampled stack data, memory
 addresses and proprietary binaries; treat them as sensitive and potentially
 large. Existing folded files containing `[unknown]` cannot recover discarded
 addresses without the original `perf.data`.

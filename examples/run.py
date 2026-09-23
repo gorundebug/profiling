@@ -1553,11 +1553,13 @@ def profile_target(
     # measured load has finished.  A fixed 120-second timeout could therefore
     # reject a profile whose artifacts were already being finalized.
     profiler_exit_timeout = (
-        # profile.sh profiles for the load duration plus its five-second
-        # startup margin and allows py-spy up to 12x that window to drain.
-        # Keep the parent timeout above that bounded child timeout.
+        # py-spy may take 12x the sampling window to drain.
         max(300, duration_seconds * 16)
         if language.tool == "pyspy"
+        # Full C++ inline decoding took six minutes on the captured Boost
+        # profile. It happens after sampling and must not be cut off at 120s.
+        else float(env.get("PROFILING_PERF_FINALIZE_TIMEOUT", max(900, duration_seconds * 32)))
+        if language.tool == "perf"
         else 120
     )
     profiler_return_code = profiler_process.wait(timeout=profiler_exit_timeout)
@@ -1735,7 +1737,12 @@ def profile_offcpu_target(
         duration=args.duration,
         result_name=f"{language.name}.{service}.offcpu-load.json",
     )
-    return_code = profiler_process.wait(timeout=120)
+    return_code = profiler_process.wait(
+        timeout=float(env.get(
+            "PROFILING_PERF_FINALIZE_TIMEOUT",
+            max(900, _parse_duration_seconds(args.duration) * 32),
+        ))
+    )
     if return_code != 0:
         raise RuntimeError(
             f"{language.name} {service} off-CPU profiler exited with {return_code}"
