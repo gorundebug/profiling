@@ -28,7 +28,8 @@ folded_output="${output}.folded.txt"
 perf_frequency="${PROFILING_PERF_FREQUENCY:-997}"
 perf_event="${PROFILING_PERF_EVENT:-}"
 perf_period="${PROFILING_PERF_PERIOD:-}"
-perf_call_graph="${PROFILING_PERF_CALL_GRAPH:-dwarf,16384}"
+perf_call_graph="${PROFILING_PERF_CALL_GRAPH:-dwarf,32768}"
+perf_mmap_pages="${PROFILING_PERF_MMAP_PAGES:-8M}"
 perf_offcpu_call_graph="${PROFILING_PERF_OFFCPU_CALL_GRAPH:-fp}"
 pyspy_rate="${PROFILING_PYSPY_RATE:-100}"
 pyspy_timeout="${PROFILING_PYSPY_TIMEOUT:-}"
@@ -69,12 +70,22 @@ mkdir -p "$(dirname "$output")"
 # Keep raw addresses and the exact mapped ELF files before the target exits.
 # Do not change host security settings to obtain kernel symbols.
 prepare_perf_artifacts() {
+  perf_user_reg_args=()
+  perf_user_regs="perf-default"
+  if [[ "$active_call_graph" == dwarf || "$active_call_graph" == dwarf,* ]]; then
+    perf_user_reg_args=(--user-regs)
+    perf_user_regs="all"
+  fi
   perf_data="${output}.perf.data"
   perf_script="${output}.perf.script"
   perf_symbols="${output}.symbols"
+  python3 /usr/local/bin/capture_perf_vdso.py --pid "$pid" --root "$perf_symbols" \
+    > "${output}.vdso.json" 2>> "${output}.symbolization.log"
   perf_diagnostics="${output}.symbolization.log"
   target_root="/proc/$pid/root"
   : > "$perf_diagnostics"
+  python3 /usr/local/bin/capture_perf_pac.py capture --pid "$pid" \
+    --metadata "${output}.pac.json" 2>> "$perf_diagnostics"
   cat "/proc/$pid/maps" > "${output}.maps.before.txt"
   {
     perf version
@@ -82,6 +93,7 @@ prepare_perf_artifacts() {
     printf 'kernel_boot_id=%s\n' "$(cat /proc/sys/kernel/random/boot_id)"
     printf 'pid=%s\ncall_graph=%s\nfrequency=%s\nperiod=%s\nevent=%s\n' \
       "$pid" "$active_call_graph" "$perf_frequency" "$perf_period" "$perf_event"
+    printf 'mmap_pages=%s\nuser_regs=%s\n' "$perf_mmap_pages" "$perf_user_regs"
     printf 'executable=%s\n' "$(readlink "/proc/$pid/exe")"
   } > "${output}.perf.metadata.txt"
 }
@@ -97,6 +109,9 @@ copy_perf_symbol_file() {
 }
 
 finish_perf_artifacts() {
+  perf evlist -v -i "$perf_data" > "${output}.perf.events.txt" 2>> "$perf_diagnostics"
+  python3 /usr/local/bin/capture_perf_pac.py bind --pid "$pid" \
+    --metadata "${output}.pac.json" --data "$perf_data" 2>> "$perf_diagnostics"
   cat "/proc/$pid/maps" > "${output}.maps.after.txt"
   mkdir -p "$perf_symbols"
   # Include mappings from both boundaries. Libraries unloaded between them
@@ -125,11 +140,19 @@ finish_perf_artifacts() {
     "${output}.maps.before.txt" "${output}.maps.after.txt" | sort -u)
 
   perf buildid-list -i "$perf_data" > "${output}.buildids.txt" 2>> "$perf_diagnostics"
+  python3 /usr/local/bin/capture_perf_vdso.py --root "$perf_symbols" \
+    --buildids "${output}.buildids.txt" > "${output}.vdso.json" 2>> "$perf_diagnostics"
   while read -r build_id rest; do
     if [[ "$build_id" =~ ^[0-9a-fA-F]{8,}$ ]]; then
       copy_perf_symbol_file "/usr/lib/debug/.build-id/${build_id:0:2}/${build_id:2}.debug"
     fi
   done < "${output}.buildids.txt"
+  # Resolve dependency debug packages only after sampling. Never install or
+  # replace a library in the measured service to obtain its symbols.
+  python3 /usr/local/bin/collect_perf_debug.py --root "$perf_symbols" \
+    --maps "${output}.maps.before.txt" "${output}.maps.after.txt" \
+    --cache "$(dirname "$output")/.debug-info-cache" \
+    > "${output}.debug-info.json" 2>> "$perf_diagnostics"
   perf_kernel_args=()
   if ! cat /proc/kallsyms > "${output}.kallsyms.txt" 2>> "$perf_diagnostics"; then
     printf 'Kernel symbols unavailable; host security settings were not changed.\n' >> "$perf_diagnostics"
@@ -145,10 +168,14 @@ finish_perf_artifacts() {
   PERF_SYMBOL_ROOT="$perf_symbols" PERF_SYMBOL_DIAGNOSTICS="$perf_diagnostics" \
     PATH="/usr/local/lib/perf-symbolizer:$PATH" \
     unshare --mount --pid --fork --mount-proc \
-    perf script --inline --symfs "$perf_symbols" "${perf_kernel_args[@]}" -i "$perf_data" \
+    python3 /usr/local/bin/capture_perf_pac.py decode \
+      --metadata "${output}.pac.json" --data "$perf_data" -- \
+      perf script --inline --symfs "$perf_symbols" "${perf_kernel_args[@]}" -i "$perf_data" \
     > "$perf_script" 2>> "$perf_diagnostics"
   python3 /usr/local/bin/validate_perf_script.py "$perf_script" \
     > "${output}.symbolization.json"
+  python3 /usr/local/bin/analyze_perf_visibility.py "$perf_script" \
+    > "${output}.visibility.json"
   /opt/FlameGraph/stackcollapse-perf.pl "$perf_script" > "$folded_output"
   echo "profile.sh: retained $perf_data, $perf_script and $perf_symbols" >&2
 }
@@ -165,7 +192,8 @@ case "$tool" in
       printf '%s\n' "$pid" > "$ready_file"
     fi
     perf record "${perf_event_args[@]}" "${perf_sampling_args[@]}" --inherit \
-      --call-graph "$active_call_graph" -p "$pid" -o "$perf_data" -- sleep "$duration"
+      --call-graph "$active_call_graph" "${perf_user_reg_args[@]}" \
+      --mmap-pages "$perf_mmap_pages" -p "$pid" -o "$perf_data" -- sleep "$duration"
     finish_perf_artifacts
     ;;
   pyspy)
@@ -237,6 +265,7 @@ case "$tool" in
     # switch. Paired scheduler profiles provide durations; these stacks provide
     # the missing futex/epoll/CQ/mutex call-site attribution.
     perf record -e sched:sched_switch --inherit --call-graph "$active_call_graph" -p "$pid" \
+      "${perf_user_reg_args[@]}" --mmap-pages "$perf_mmap_pages" \
       -o "$perf_data" -- sleep "$duration"
     finish_perf_artifacts
     ;;

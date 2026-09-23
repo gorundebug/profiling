@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import os
+import json
 import sys
 from pathlib import Path
 
@@ -22,6 +23,16 @@ def resolve_arguments(arguments: list[str], symbol_root: str) -> list[str]:
             raise ValueError(f"ELF path escapes the captured symbol root: {filename}")
         if not candidate.is_file():
             raise ValueError(f"ELF path is not a file: {candidate}")
+        manifest = root / ".debug-info.json"
+        if manifest.is_file():
+            entry = json.loads(manifest.read_text())["libraries"].get(
+                "/" + str(candidate.relative_to(root)), {})
+            if entry.get("status") == "resolved":
+                debug = (root / entry["debug_file"].lstrip("/")).resolve(strict=True)
+                if not debug.is_relative_to(root) or not debug.is_file():
+                    raise ValueError("Debug file escapes captured root or is not a file")
+                # The collector verifies build ID before writing this mapping.
+                candidate = debug
         return str(candidate)
 
     result = arguments.copy()

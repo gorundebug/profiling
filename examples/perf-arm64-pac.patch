@@ -1,0 +1,41 @@
+--- a/tools/perf/arch/arm64/util/unwind-libdw.c
++++ b/tools/perf/arch/arm64/util/unwind-libdw.c
+@@ -1,5 +1,9 @@
+ // SPDX-License-Identifier: GPL-2.0
+ #include <elfutils/libdwfl.h>
++#include <errno.h>
++#include <stdlib.h>
++#include <stdio.h>
++#include <inttypes.h>
+ #include "perf_regs.h"
+ #include "../../../util/unwind-libdw.h"
+ #include "../../../util/perf_regs.h"
+@@ -12,1 +16,2 @@
+ 	Dwarf_Word dwarf_regs[PERF_REG_ARM64_MAX], dwarf_pc;
++	const char *pac = getenv("PERF_ARM64_PAC_MASK");
+@@ -60,5 +65,25 @@
+ 	dwarf_pc = REG(PC);
+ 	dwfl_thread_state_register_pc(thread, dwarf_pc);
+ 
++	/* Supplied by the recording-bound sidecar, never inferred from an IP.
++	 * elfutils >= 0.192 accepts NT_ARM_PAC_MASK's instruction mask through
++	 * pseudo-register -2, also used by its native ptrace backend.
++	 */
++	if (pac && *pac) {
++		char *end;
++		uintmax_t value;
++		Dwarf_Word mask;
++
++		errno = 0;
++		value = strtoumax(pac, &end, 16);
++		if (errno || end == pac || *end || *pac == '-') {
++			fprintf(stderr, "Invalid PERF_ARM64_PAC_MASK\n");
++			return false;
++		}
++		mask = value;
++		if (!dwfl_thread_state_registers(thread, -2, 1, &mask))
++			return false;
++	}
++
+ 	return true;
+ }

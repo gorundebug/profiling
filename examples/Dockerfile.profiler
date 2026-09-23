@@ -19,7 +19,34 @@ COPY allocation_profile.c /src/allocation_profile.c
 RUN gcc -std=c11 -O2 -fPIC -shared -Wall -Wextra -Werror \
     /src/allocation_profile.c -ldl -o /liballocation_profile.so
 
-FROM ${DEPENDENCY_DOCKER_REGISTRY}/library/debian:bookworm-slim
+FROM ${DEPENDENCY_DOCKER_REGISTRY}/library/debian:trixie-slim AS perf-builder
+
+ARG TARGETARCH
+ARG DEPENDENCY_APT_DEBIAN_URL=
+ARG DEPENDENCY_APT_DEBIAN_SECURITY_URL=
+RUN rm -f /etc/apt/apt.conf.d/docker-clean
+RUN if [ -n "$DEPENDENCY_APT_DEBIAN_URL$DEPENDENCY_APT_DEBIAN_SECURITY_URL" ]; then \
+      find /etc/apt -type f \( -name '*.list' -o -name '*.sources' \) -exec sed -i \
+        -e "s|http://deb.debian.org/debian-security|$DEPENDENCY_APT_DEBIAN_SECURITY_URL|g" \
+        -e "s|http://deb.debian.org/debian|$DEPENDENCY_APT_DEBIAN_URL|g" {} +; \
+    fi
+RUN --mount=type=cache,id=servicegen-apt-lists-trixie-${TARGETARCH},target=/var/lib/apt/lists,sharing=locked \
+    --mount=type=cache,id=servicegen-apt-cache-trixie-${TARGETARCH},target=/var/cache/apt,sharing=locked \
+    apt-get update && apt-get install --yes --no-install-recommends \
+      build-essential flex bison pkg-config libelf-dev libdw-dev libtraceevent-dev \
+      libssl-dev libzstd-dev zlib1g-dev linux-source-6.12 python3-dev patch xz-utils
+COPY perf-arm64-pac.patch /tmp/perf-arm64-pac.patch
+RUN mkdir /src && tar -xJf /usr/src/linux-source-6.12.tar.xz -C /src --strip-components=1 \
+      linux-source-6.12/tools linux-source-6.12/include linux-source-6.12/scripts \
+      linux-source-6.12/arch linux-source-6.12/Makefile \
+    && patch -d /src -p1 < /tmp/perf-arm64-pac.patch \
+    && make -C /src/tools/perf JOBS=4 PYTHON=python3 \
+      NO_LIBUNWIND=1 NO_LIBBPF=1 NO_LIBPYTHON=1 NO_LIBPERL=1 NO_SLANG=1 \
+      NO_LIBNUMA=1 NO_LIBCAPSTONE=1 NO_LIBPFM=1 perf
+COPY capture_pac_mask.c /src/capture_pac_mask.c
+RUN gcc -std=c11 -O2 -Wall -Wextra -Werror /src/capture_pac_mask.c -o /capture-pac-mask
+
+FROM ${DEPENDENCY_DOCKER_REGISTRY}/library/debian:trixie-slim
 
 ARG TARGETARCH
 ARG DEPENDENCY_APT_DEBIAN_URL=
@@ -40,7 +67,8 @@ RUN --mount=type=cache,id=servicegen-apt-lists-${TARGETARCH},target=/var/lib/apt
     --mount=type=cache,id=servicegen-apt-cache-${TARGETARCH},target=/var/cache/apt,sharing=locked \
     apt-get update \
     && apt-get install --yes --no-install-recommends \
-       binutils linux-perf procps perl git curl python3-pip ca-certificates util-linux
+       binutils libdw1t64 libelf1t64 libtraceevent1 libssl3t64 libzstd1 zlib1g \
+       procps perl git curl python3-pip ca-certificates util-linux
 
 RUN curl --fail --location --silent --show-error \
       "$DEPENDENCY_GITHUB_RAW_URL/brendangregg/FlameGraph/archive/$FLAMEGRAPH_REVISION.tar.gz" \
@@ -56,6 +84,13 @@ RUN --mount=type=cache,id=servicegen-profiler-pip-v1-${TARGETARCH},target=/root/
 COPY profile.sh /usr/local/bin/profile.sh
 COPY perf_addr2line.py /usr/local/lib/perf-symbolizer/addr2line
 COPY validate_perf_script.py /usr/local/bin/validate_perf_script.py
+COPY collect_perf_debug.py /usr/local/bin/collect_perf_debug.py
+COPY capture_perf_vdso.py /usr/local/bin/capture_perf_vdso.py
+COPY capture_perf_pac.py /usr/local/bin/capture_perf_pac.py
+COPY --from=perf-builder /capture-pac-mask /usr/local/bin/capture-pac-mask
+COPY --from=perf-builder /src/tools/perf/perf /usr/local/bin/perf
+COPY analyze_perf_visibility.py /usr/local/bin/analyze_perf_visibility.py
+COPY compare_perf_stacks.py /usr/local/bin/compare_perf_stacks.py
 COPY analyze_folded.py /usr/local/bin/analyze_folded.py
 COPY analyze_allocation_stacks.py /usr/local/bin/analyze_allocation_stacks.py
 COPY scheduler_profile.py /usr/local/bin/scheduler_profile.py

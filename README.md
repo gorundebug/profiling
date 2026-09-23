@@ -15,7 +15,7 @@ A `profiler` sidecar container shares `orderservice`'s PID namespace
 (`pid: "service:orderservice"`), so it can sample the target process
 directly by PID:
 
-- **Go, userver C++, Boost C++, Rust**: `perf record --call-graph dwarf,16384`
+- **Go, userver C++, Boost C++, Rust**: `perf record --call-graph dwarf,32768 --user-regs`
   → `perf script` → the classic
   [FlameGraph](https://github.com/brendangregg/FlameGraph) Perl scripts →
   SVG.
@@ -329,12 +329,31 @@ handlers or add per-continuation callbacks to the request path.
 
 ## Native perf symbols and raw artifacts
 
-CPU sampling defaults to DWARF stack unwinding with a 16 KiB stack dump per
-sample. Override it with `PROFILING_PERF_CALL_GRAPH=fp` when the complete call
+CPU sampling defaults to DWARF stack unwinding with a 32 KiB stack dump per
+sample. DWARF recording explicitly requests all supported user registers with
+`--user-regs`; this makes the capture policy explicit, not a claim that earlier
+DWARF recordings omitted them. Override it with `PROFILING_PERF_CALL_GRAPH=fp` when the complete call
 chain, including dependencies, preserves frame pointers. Off-CPU tracing keeps
 `PROFILING_PERF_OFFCPU_CALL_GRAPH=fp` by default: dumping a DWARF stack on every
 context switch can produce very large traces. Both settings are passed to
 `perf record --call-graph` and recorded next to the raw profile.
+
+`PROFILING_PERF_MMAP_PAGES=8M` sets the perf recording ring-buffer size, accepting
+the same page-count/size syntax as `perf record --mmap-pages`. It is independent
+of the per-sample stack size. Memory usage depends on the number of mmap buffers
+perf allocates; it is not an 8 MiB cap on the profiler container. The larger stack
+and buffer retain more diagnostic data but do not fix incorrect unwind rules.
+Recording warnings, including lost samples, remain visible in profiler logs.
+
+Only the profiler image and profiling Compose configuration need updating for
+these settings; service images and runtime libraries do not need rebuilding.
+New stack bytes require a new recording. To reuse existing service images while
+rebuilding the profiler:
+
+```bash
+docker build -f examples/Dockerfile.profiler -t servicelib-profiler:local examples
+python3 examples/run.py --language cppboost --skip-build --duration 20s
+```
 
 DWARF sampling costs CPU and disk space. For a lower-overhead diagnostic run:
 
@@ -357,6 +376,8 @@ For each CPU/off-CPU SVG, the collector retains these adjacent artifacts:
 - `.symbols/`: copies of executable mapped files and available debug companions.
 - `.kallsyms.txt`: kernel symbols visible to the collector (possibly masked).
 - `.perf.metadata.txt`: kernel, perf version, target PID and recording settings.
+- `.perf.events.txt`: actual recorded event attributes, including user-register
+  mask and stack-dump size, from `perf evlist -v`.
 - `.symbolization.log`: decoding warnings and unavailable symbol diagnostics.
 - `.symbolization.json`: counts of named and unresolved stack frames (not CPU percentages).
 
@@ -374,7 +395,28 @@ function frames fail instead of publishing only thread names or kernel frames.
 Copies are made after recording, outside the sampling interval. Keep the
 exact service image as well: deleted mappings, libraries loaded and unloaded
 inside the recording interval, and absent debug packages cannot always be
-preserved by the mapping snapshots. No debug packages are downloaded implicitly.
+preserved by the mapping snapshots.
+
+After recording, missing dependency debuginfo is retrieved from Ubuntu and
+Debian debuginfod by the captured ELF build ID. Every downloaded file must have
+the same build ID and DWARF information; another version of a library is never
+substituted. Downloads are cached under `.artifacts/.debug-info-cache` and do
+not change service containers or the measured binaries. Only build IDs are
+sent to those servers, not profiles or source code. Set
+`PROFILING_DEBUGINFOD_URLS` to a space-separated list of internal/proxy servers,
+or set it to an empty string to disable downloads and use installed/cached
+symbols only. A missing public/private debug file is reported, not fabricated.
+
+`.debug-info.json` lists each mapped ELF, its build ID, debug-file status and
+retrieval failures. `.visibility.json` separately reports unresolved frames,
+samples containing them, unknown leaf frames and unresolved addresses by
+library. These are counts, not CPU percentages. Zero unknown leaf frames does
+not mean every caller is known or that unwinding reached the thread entry.
+Matching debuginfo can repair symbol names in saved recordings but cannot
+reconstruct missing stack bytes. The new 32 KiB default provides a diagnostic
+comparison against older 16 KiB captures; it does not prove that truncation
+caused their unresolved frames. Further increases require evidence of stack
+truncation and increase profiling overhead.
 
 To decode again on a compatible Linux perf installation, use absolute paths:
 
@@ -382,12 +424,16 @@ To decode again on a compatible Linux perf installation, use absolute paths:
 profile=/absolute/path/cppboost.orderservice.flamegraph.svg
 PERF_SYMBOL_ROOT="$profile.symbols" \
   PATH="/usr/local/lib/perf-symbolizer:$PATH" \
-  perf script --inline --symfs "$profile.symbols" -i "$profile.perf.data" \
+  python3 /usr/local/bin/capture_perf_pac.py decode \
+    --metadata "$profile.pac.json" --data "$profile.perf.data" -- \
+    perf script --inline --symfs "$profile.symbols" -i "$profile.perf.data" \
   > "$profile.decoded.script"
 ```
 
 The command above runs inside the profiler image, which supplies the scoped
-addr2line launcher. Rebuild that image after collector changes.
+addr2line launcher, and requires the PAC sidecar produced by this collector.
+Older captures without that sidecar must not be assigned a guessed PAC mask.
+Rebuild that image after collector changes.
 
 Full C++ inline decoding can take several minutes after sampling finishes.
 The runner allows `max(900, duration_seconds * 32)` seconds for native perf
@@ -435,3 +481,34 @@ built or service is started; Python sampling defaults to 100 Hz and perf to
 python3 examples/run.py --skip-build   # reuse already-built images
 python3 examples/run.py --clean        # tear down and remove artifacts
 ```
+
+### vDSO and unresolved native callers
+
+Before native sampling, the profiler copies the **target process's** executable
+`[vdso]` mapping from `/proc/<pid>/mem` into the captured symbol root. After
+recording, its ELF build ID is checked against `perf buildid-list`; a mismatched
+or incomplete image is removed rather than used for symbolization. The report
+`*.vdso.json` distinguishes a verified image, an image not sampled in this run,
+and unavailable capture. This uses the profiler's existing ptrace permission;
+it does not attach a debugger, modify the target, or change host security policy.
+The profiler's own vDSO is not substituted for the target's.
+
+A zero count of unknown leaf functions is **not** proof of complete stacks.
+Inspect `*.visibility.json` for unresolved callers as well. In particular, some
+ARM64 recordings contain PAC-signed return addresses which the tested perf
+unwinder does not fully recover. Supplying matching DWARF and a matching vDSO
+resolves missing symbols, but does not repair missing unwind state. Such frames
+remain explicitly unknown: no guessed address masks or frame filtering is used.
+The profiler builds perf 6.12 with libdw >= 0.192 and a small ARM64 bridge
+(`examples/perf-arm64-pac.patch`) to supply the kernel's instruction PAC mask to
+libdw. `capture-pac-mask` briefly seizes/stops the target thread before sampling,
+reads `NT_ARM_PAC_MASK`, and detaches; it does not modify registers, PAC keys or
+service code. It checks the mask again after sampling. This is outside the
+measurement window and uses the profiler's existing `SYS_PTRACE` permission.
+
+`*.pac.json` records the target identity, mask, and SHA-256 of the completed
+`perf.data`. The decoder rejects a sidecar for a different recording and clears
+any inherited mask. If capture is unavailable, the report and diagnostic log
+say so and decoding proceeds without guessing a mask. Non-ARM64 targets are not
+ptrace-attached for this purpose. Old recordings without this metadata are not
+silently assigned the mask from the machine doing the analysis.
