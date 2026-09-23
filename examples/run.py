@@ -17,9 +17,10 @@ import threading
 import time
 import urllib.error
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, TextIO
+from typing import Any, Callable, TextIO
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import dependency_command
@@ -1478,11 +1479,24 @@ def profile_target(
     service: str,
     profiler_service: str,
     process_pattern: str,
+    *,
+    deferred_profiles: list[Callable[[], list[Path]]] | None = None,
 ) -> list[Path]:
     output_name = scenario_artifact_name(
         args, f"{language.name}.{service}.flamegraph.svg"
     )
     output_path = ARTIFACTS / output_name
+    decode_gate = output_path.with_name(output_path.name + ".decode.gate")
+    capture_path = output_path.with_name(output_path.name + ".capture.ready")
+    profiler_gate_args: list[str] = []
+    if deferred_profiles is not None:
+        if language.tool != "perf":
+            raise ValueError("Deferred decoding is supported only for perf CPU profiles")
+        decode_gate.unlink(missing_ok=True)
+        capture_path.unlink(missing_ok=True)
+        profiler_gate_args = [
+            "--env", f"PROFILING_PERF_DECODE_GATE=/results/{decode_gate.name}"
+        ]
     output_path.unlink(missing_ok=True)
     ready_name = scenario_artifact_name(
         args, f".{language.name}.{service}.cpu.ready"
@@ -1506,6 +1520,7 @@ def profile_target(
             "run",
             "--rm",
             "--no-deps",
+            *profiler_gate_args,
             profiler_service,
             language.tool,
             (
@@ -1552,66 +1567,99 @@ def profile_target(
     # py-spy may need extra time to drain delayed ptrace samples after the
     # measured load has finished.  A fixed 120-second timeout could therefore
     # reject a profile whose artifacts were already being finalized.
-    profiler_exit_timeout = (
-        # py-spy may take 12x the sampling window to drain.
-        max(300, duration_seconds * 16)
-        if language.tool == "pyspy"
-        # Full C++ inline decoding took six minutes on the captured Boost
-        # profile. It happens after sampling and must not be cut off at 120s.
-        else float(env.get("PROFILING_PERF_FINALIZE_TIMEOUT", max(900, duration_seconds * 32)))
-        if language.tool == "perf"
-        else 120
-    )
-    profiler_return_code = profiler_process.wait(timeout=profiler_exit_timeout)
-    if profiler_return_code != 0:
-        raise RuntimeError(
-            f"{language.name} {service} profiler exited with code {profiler_return_code}"
-        )
-    if not output_path.exists():
-        raise RuntimeError(f"{language.name} {service} profiler did not create {output_path}")
-    artifacts = [
-        output_path,
-        Path(f"{output_path}.folded.txt"),
-        Path(f"{output_path}.top.txt"),
-    ]
-    load_artifact = ARTIFACTS / scenario_artifact_name(
-        args, f"{language.name}.{service}.profiling-load.json"
-    )
-    artifacts.append(load_artifact)
-    if SCENARIOS[getattr(args, "scenario", "normal")].kafka_enabled:
-        artifacts.append(load_artifact.with_suffix(".orchestration.json"))
-    if language.tool == "node-cpu":
-        raw_profile = Path(f"{output_path}.cpuprofile")
-        if not raw_profile.is_file():
-            raise RuntimeError(
-                f"{language.name} {service} profiler did not create {raw_profile}"
+    def finish_profile() -> list[Path]:
+        try:
+            if deferred_profiles is not None:
+                print(f"--- {language.name}: decoding {service} ---", flush=True)
+                decode_gate.write_text("decode\n")
+            profiler_exit_timeout = (
+                # py-spy may take 12x the sampling window to drain.
+                max(300, duration_seconds * 16)
+                if language.tool == "pyspy"
+                # Full C++ inline decoding took six minutes on the captured Boost
+                # profile. It happens after sampling and must not be cut off at 120s.
+                else float(env.get("PROFILING_PERF_FINALIZE_TIMEOUT", max(900, duration_seconds * 32)))
+                if language.tool == "perf"
+                else 120
             )
-        runtime_profile = Path(f"{output_path}.runtime.json")
-        artifacts.extend([raw_profile, runtime_profile])
-    missing = [
-        artifact
-        for artifact in artifacts
-        if not artifact.is_file() or artifact.stat().st_size == 0
-    ]
-    if missing:
-        raise RuntimeError(
-            f"{language.name} {service} profiler created no artifacts: {missing}"
-        )
-    if language.tool == "node-cpu":
-        summary = write_node_profile_summary(
-            language,
-            args,
-            service,
-            output_path,
-            runtime_profile,
-            ARTIFACTS / scenario_artifact_name(
+            profiler_return_code = profiler_process.wait(timeout=profiler_exit_timeout)
+            if profiler_return_code != 0:
+                raise RuntimeError(
+                    f"{language.name} {service} profiler exited with code {profiler_return_code}"
+                )
+            if not output_path.exists():
+                raise RuntimeError(f"{language.name} {service} profiler did not create {output_path}")
+            artifacts = [
+                output_path,
+                Path(f"{output_path}.folded.txt"),
+                Path(f"{output_path}.top.txt"),
+            ]
+            load_artifact = ARTIFACTS / scenario_artifact_name(
                 args, f"{language.name}.{service}.profiling-load.json"
-            ),
-            raw_profile,
-            mode="cpu",
-        )
-        artifacts.append(summary)
-    return artifacts
+            )
+            artifacts.append(load_artifact)
+            if SCENARIOS[getattr(args, "scenario", "normal")].kafka_enabled:
+                artifacts.append(load_artifact.with_suffix(".orchestration.json"))
+            if language.tool == "node-cpu":
+                raw_profile = Path(f"{output_path}.cpuprofile")
+                if not raw_profile.is_file():
+                    raise RuntimeError(
+                        f"{language.name} {service} profiler did not create {raw_profile}"
+                    )
+                runtime_profile = Path(f"{output_path}.runtime.json")
+                artifacts.extend([raw_profile, runtime_profile])
+            missing = [
+                artifact
+                for artifact in artifacts
+                if not artifact.is_file() or artifact.stat().st_size == 0
+            ]
+            if missing:
+                raise RuntimeError(
+                    f"{language.name} {service} profiler created no artifacts: {missing}"
+                )
+            if language.tool == "node-cpu":
+                summary = write_node_profile_summary(
+                    language,
+                    args,
+                    service,
+                    output_path,
+                    runtime_profile,
+                    ARTIFACTS / scenario_artifact_name(
+                        args, f"{language.name}.{service}.profiling-load.json"
+                    ),
+                    raw_profile,
+                    mode="cpu",
+                )
+                artifacts.append(summary)
+            return artifacts
+        finally:
+            if deferred_profiles is not None:
+                decode_gate.unlink(missing_ok=True)
+                capture_path.unlink(missing_ok=True)
+
+    if deferred_profiles is not None:
+        # This wait covers capture finalization, not offline decoding. The
+        # decoder gets its own full timeout after the executor releases it.
+        capture_timeout = float(env.get(
+            "PROFILING_PERF_FINALIZE_TIMEOUT", max(900, duration_seconds * 32)
+        ))
+        deadline = time.monotonic() + capture_timeout
+        while not capture_path.is_file():
+            return_code = profiler_process.poll()
+            if return_code is not None:
+                raise RuntimeError(
+                    f"{language.name} {service} profiler exited before the "
+                    f"decode barrier with code {return_code}; rebuild the profiler image"
+                )
+            if time.monotonic() >= deadline:
+                raise TimeoutError(
+                    f"{language.name} {service} capture preparation timed out "
+                    f"after {capture_timeout}s"
+                )
+            time.sleep(0.1)
+        deferred_profiles.append(finish_profile)
+        return []
+    return finish_profile()
 
 
 def wait_for_profiler_ready(
@@ -1846,6 +1894,9 @@ def profile_language(language: Language, args: argparse.Namespace) -> list[Path]
             )
         outputs: list[Path] = []
         if "cpu" in args.profile_kind:
+            deferred_profiles: list[Callable[[], list[Path]]] | None = (
+                [] if language.tool == "perf" else None
+            )
             for service, profiler_service in targets:
                 process_pattern = patterns[service]
                 if process_pattern is None:
@@ -1855,9 +1906,17 @@ def profile_language(language: Language, args: argparse.Namespace) -> list[Path]
                 print(f"--- {language.name}: CPU profiling {service} ---", flush=True)
                 outputs.extend(
                     profile_target(
-                        language, args, env, service, profiler_service, process_pattern
+                        language, args, env, service, profiler_service, process_pattern,
+                        deferred_profiles=deferred_profiles,
                     )
                 )
+            if deferred_profiles:
+                # Release decoders only after every measured load is complete.
+                # A third target (Kafka analytics) waits for a decoding slot.
+                with ThreadPoolExecutor(max_workers=2) as executor:
+                    futures = [executor.submit(finish) for finish in deferred_profiles]
+                    for future in futures:
+                        outputs.extend(future.result())
         if "scheduler" in args.profile_kind:
             for service, profiler_service in TARGETS:
                 print(

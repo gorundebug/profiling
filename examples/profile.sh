@@ -167,6 +167,17 @@ finish_perf_artifacts() {
   else
     perf_kernel_args=(--kallsyms "${output}.kallsyms.txt")
   fi
+  # The runner captures each service sequentially, then releases at most two
+  # decoders. Keep all symbol/cache preparation before this barrier so it
+  # cannot compete with another service's measured load or shared cache writes.
+  if [ -n "${PROFILING_PERF_DECODE_GATE:-}" ]; then
+    printf 'captured\n' > "${output}.capture.ready"
+    echo "profile.sh: capture prepared; waiting to decode $perf_data" >&2
+    while [ ! -f "$PROFILING_PERF_DECODE_GATE" ]; do
+      sleep 0.1
+    done
+    echo "profile.sh: decoding $perf_data" >&2
+  fi
   # Decode offline in a private PID/mount namespace: recorded PIDs must not
   # cause perf to enter a still-live target mount namespace, where our copied
   # symbol paths are unavailable. addr2line must use the same root for DSOs

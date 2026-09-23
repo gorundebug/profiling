@@ -58,6 +58,15 @@ process. The normal runner does not change it. On a dedicated profiling host,
 `--privileged` container, rather than running the profiler container itself
 `--privileged`.
 
+For CPU profiles using `perf`, service recordings and their load runs remain
+sequential. After all recordings and symbol preparation have finished, the
+runner decodes up to two services concurrently. Decoding never overlaps the
+next measured load run. Each decoder has its own
+`PROFILING_PERF_FINALIZE_TIMEOUT` (900 seconds by default for a 20-second run),
+starting when that decoder is released, not while it waits for other captures.
+The services keep separate raw profiles, symbol directories and reports.
+This scheduling requires the updated profiler image; rebuild it after updating.
+
 `vm.max_map_count` is another global host sysctl and is also left untouched by
 default. userver mmaps a stack per coroutine, so a dedicated high-concurrency
 comparison host may explicitly pass `--max-map-count 1048576` if its existing
