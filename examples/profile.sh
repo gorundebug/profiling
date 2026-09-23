@@ -28,6 +28,8 @@ folded_output="${output}.folded.txt"
 perf_frequency="${PROFILING_PERF_FREQUENCY:-997}"
 perf_event="${PROFILING_PERF_EVENT:-}"
 perf_period="${PROFILING_PERF_PERIOD:-}"
+perf_call_graph="${PROFILING_PERF_CALL_GRAPH:-dwarf,16384}"
+perf_offcpu_call_graph="${PROFILING_PERF_OFFCPU_CALL_GRAPH:-fp}"
 pyspy_rate="${PROFILING_PYSPY_RATE:-100}"
 pyspy_timeout="${PROFILING_PYSPY_TIMEOUT:-}"
 pyspy_nonblocking="${PROFILING_PYSPY_NONBLOCKING:-0}"
@@ -64,8 +66,86 @@ fi
 
 mkdir -p "$(dirname "$output")"
 
+# Keep raw addresses and the exact mapped ELF files before the target exits.
+# Do not change host security settings to obtain kernel symbols.
+prepare_perf_artifacts() {
+  perf_data="${output}.perf.data"
+  perf_script="${output}.perf.script"
+  perf_symbols="${output}.symbols"
+  perf_diagnostics="${output}.symbolization.log"
+  target_root="/proc/$pid/root"
+  : > "$perf_diagnostics"
+  cat "/proc/$pid/maps" > "${output}.maps.before.txt"
+  {
+    perf version
+    uname -a
+    printf 'pid=%s\ncall_graph=%s\nfrequency=%s\nperiod=%s\nevent=%s\n' \
+      "$pid" "$active_call_graph" "$perf_frequency" "$perf_period" "$perf_event"
+    printf 'executable=%s\n' "$(readlink "/proc/$pid/exe")"
+  } > "${output}.perf.metadata.txt"
+}
+
+copy_perf_symbol_file() {
+  local relative="$1"
+  if [ -f "$target_root$relative" ] && [ ! -f "$perf_symbols$relative" ]; then
+    mkdir -p "$(dirname "$perf_symbols$relative")"
+    if ! cp -L -- "$target_root$relative" "$perf_symbols$relative"; then
+      printf 'Cannot preserve %s\n' "$relative" >> "$perf_diagnostics"
+    fi
+  fi
+}
+
+finish_perf_artifacts() {
+  cat "/proc/$pid/maps" > "${output}.maps.after.txt"
+  mkdir -p "$perf_symbols"
+  # Include mappings from both boundaries. Libraries unloaded between them
+  # remain identifiable in perf.data but may require the original image.
+  while IFS= read -r mapped; do
+    if [[ "$mapped" == *' (deleted)' ]]; then
+      printf 'Deleted mapping requires original ELF: %s\n' "$mapped" >> "$perf_diagnostics"
+      continue
+    fi
+    # /proc/maps escapes embedded newlines/backslashes with octal sequences.
+    printf -v mapped '%b' "$mapped"
+    copy_perf_symbol_file "$mapped"
+    if [ ! -f "$perf_symbols$mapped" ]; then
+      printf 'Missing mapped ELF: %s\n' "$mapped" >> "$perf_diagnostics"
+      continue
+    fi
+    copy_perf_symbol_file "/usr/lib/debug${mapped}.debug"
+    # Preserve a .gnu_debuglink companion when installed alongside the ELF.
+    debug_link="$(readelf --string-dump=.gnu_debuglink "$perf_symbols$mapped" 2>/dev/null | sed -n 's/^.*\]  *//p' | head -n 1 || true)"
+    if [ -n "$debug_link" ] && [[ "$debug_link" != */* ]]; then
+      copy_perf_symbol_file "$(dirname "$mapped")/$debug_link"
+      copy_perf_symbol_file "$(dirname "$mapped")/.debug/$debug_link"
+      copy_perf_symbol_file "/usr/lib/debug$(dirname "$mapped")/$debug_link"
+    fi
+  done < <(awk '$2 ~ /x/ && $6 ~ /^\// { sub(/^[^/]*\//, "/"); print }' \
+    "${output}.maps.before.txt" "${output}.maps.after.txt" | sort -u)
+
+  perf buildid-list -i "$perf_data" > "${output}.buildids.txt" 2>> "$perf_diagnostics"
+  while read -r build_id rest; do
+    if [[ "$build_id" =~ ^[0-9a-fA-F]{8,}$ ]]; then
+      copy_perf_symbol_file "/usr/lib/debug/.build-id/${build_id:0:2}/${build_id:2}.debug"
+    fi
+  done < "${output}.buildids.txt"
+  if ! cat /proc/kallsyms > "${output}.kallsyms.txt" 2>> "$perf_diagnostics"; then
+    printf 'Kernel symbols unavailable; host security settings were not changed.\n' >> "$perf_diagnostics"
+  elif ! awk '$1 !~ /^0+$/ { found=1; exit } END { exit !found }' "${output}.kallsyms.txt"; then
+    printf 'Kernel addresses are masked; matching kernel symbols are needed for offline decoding.\n' >> "$perf_diagnostics"
+  fi
+  # Decode while the target namespace and its original libraries still exist.
+  # Raw data and a separate symbol tree also survive profiler container removal.
+  perf script --symfs "$target_root" -i "$perf_data" \
+    > "$perf_script" 2>> "$perf_diagnostics"
+  /opt/FlameGraph/stackcollapse-perf.pl "$perf_script" > "$folded_output"
+  echo "profile.sh: retained $perf_data, $perf_script and $perf_symbols" >&2
+}
+
 case "$tool" in
   perf)
+    active_call_graph="$perf_call_graph"
+    prepare_perf_artifacts
     # Service runtimes may create or replace worker threads after attachment.
     # Keep those descendants in the same profile instead of silently
     # producing an empty or main-thread-only flamegraph.
@@ -73,9 +153,9 @@ case "$tool" in
       mkdir -p "$(dirname "$ready_file")"
       printf '%s\n' "$pid" > "$ready_file"
     fi
-    perf record "${perf_event_args[@]}" "${perf_sampling_args[@]}" --inherit -g -p "$pid" -o /tmp/perf.data -- sleep "$duration"
-    perf script -i /tmp/perf.data > /tmp/perf.script
-    /opt/FlameGraph/stackcollapse-perf.pl /tmp/perf.script > "$folded_output"
+    perf record "${perf_event_args[@]}" "${perf_sampling_args[@]}" --inherit \
+      --call-graph "$active_call_graph" -p "$pid" -o "$perf_data" -- sleep "$duration"
+    finish_perf_artifacts
     ;;
   pyspy)
     if [ -z "$pyspy_timeout" ]; then
@@ -136,6 +216,8 @@ case "$tool" in
     exec /usr/local/bin/scheduler_profile.py "$pattern" "$duration" "$output" "$ready_file"
     ;;
   offcpu)
+    active_call_graph="$perf_offcpu_call_graph"
+    prepare_perf_artifacts
     if [ -n "$ready_file" ]; then
       mkdir -p "$(dirname "$ready_file")"
       printf '%s\n' "$pid" > "$ready_file"
@@ -143,10 +225,9 @@ case "$tool" in
     # Capture the complete user/kernel call chain at every blocking context
     # switch. Paired scheduler profiles provide durations; these stacks provide
     # the missing futex/epoll/CQ/mutex call-site attribution.
-    perf record -e sched:sched_switch --inherit -g -p "$pid" \
-      -o /tmp/perf-offcpu.data -- sleep "$duration"
-    perf script -i /tmp/perf-offcpu.data > /tmp/perf-offcpu.script
-    /opt/FlameGraph/stackcollapse-perf.pl /tmp/perf-offcpu.script > "$folded_output"
+    perf record -e sched:sched_switch --inherit --call-graph "$active_call_graph" -p "$pid" \
+      -o "$perf_data" -- sleep "$duration"
+    finish_perf_artifacts
     ;;
   allocation-stacks)
     bytes_folded_output="${output}.bytes.folded.txt"

@@ -15,7 +15,7 @@ A `profiler` sidecar container shares `orderservice`'s PID namespace
 (`pid: "service:orderservice"`), so it can sample the target process
 directly by PID:
 
-- **Go, userver C++, Boost C++, Rust** (native binaries with frame pointers): `perf record -g`
+- **Go, userver C++, Boost C++, Rust**: `perf record --call-graph dwarf,16384`
   → `perf script` → the classic
   [FlameGraph](https://github.com/brendangregg/FlameGraph) Perl scripts →
   SVG.
@@ -326,6 +326,60 @@ Runtime utilization is sampled from the worker threads' CPU clocks and event
 loop lag from one periodic Asio timer. The runtime does not wrap every Asio or
 gRPC continuation in a tracking executor; diagnostics therefore do not move
 handlers or add per-continuation callbacks to the request path.
+
+## Native perf symbols and raw artifacts
+
+CPU sampling defaults to DWARF stack unwinding with a 16 KiB stack dump per
+sample. Override it with `PROFILING_PERF_CALL_GRAPH=fp` when the complete call
+chain, including dependencies, preserves frame pointers. Off-CPU tracing keeps
+`PROFILING_PERF_OFFCPU_CALL_GRAPH=fp` by default: dumping a DWARF stack on every
+context switch can produce very large traces. Both settings are passed to
+`perf record --call-graph` and recorded next to the raw profile.
+
+DWARF sampling costs CPU and disk space. For a lower-overhead diagnostic run:
+
+```bash
+PROFILING_PERF_FREQUENCY=99 PROFILING_PERF_CALL_GRAPH=dwarf,16384 \
+  python3 examples/run.py --language cppboost --duration 20s
+```
+
+Do not compare throughput from differently sampled runs as a runtime speedup.
+Release optimization and LTO remain unchanged. Applications and dependencies
+need symbol tables or matching debug files; disabling stripping for the main
+application alone does not guarantee symbols in every dependency.
+
+For each CPU/off-CPU SVG, the collector retains these adjacent artifacts:
+
+- `.perf.data`: original samples, addresses, mapping events and build IDs.
+- `.perf.script`: decoded samples, before collapsing stack frames.
+- `.maps.before.txt` and `.maps.after.txt`: target process memory mappings.
+- `.buildids.txt`: build IDs reported by perf for the recorded binaries.
+- `.symbols/`: copies of executable mapped files and available debug companions.
+- `.kallsyms.txt`: kernel symbols visible to the collector (possibly masked).
+- `.perf.metadata.txt`: kernel, perf version, target PID and recording settings.
+- `.symbolization.log`: decoding warnings and unavailable symbol diagnostics.
+
+The first decoding uses `perf script --symfs /proc/PID/root` while the service
+is alive, so paths resolve against its filesystem rather than the profiler
+image. Copies are made after recording, outside the sampling interval. Keep the
+exact service image as well: deleted mappings, libraries loaded and unloaded
+inside the recording interval, and absent debug packages cannot always be
+preserved by the mapping snapshots. No debug packages are downloaded implicitly.
+
+To decode again on a compatible Linux perf installation, use absolute paths:
+
+```bash
+profile=/absolute/path/cppboost.orderservice.flamegraph.svg
+perf script --symfs "$profile.symbols" -i "$profile.perf.data" \
+  > "$profile.decoded.script"
+```
+
+Missing kernel frames may require the matching Linux kernel image/symbols;
+masked `kallsyms` cannot restore them. The collector does not relax host kernel
+security settings. These raw artifacts can contain sampled stack data, memory
+addresses and proprietary binaries; treat them as sensitive and potentially
+large. Existing folded files containing `[unknown]` cannot recover discarded
+addresses without the original `perf.data`.
 
 ## CI artifacts
 
