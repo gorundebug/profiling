@@ -134,9 +134,11 @@ finish_perf_artifacts() {
   elif ! awk '$1 !~ /^0+$/ { found=1; exit } END { exit !found }' "${output}.kallsyms.txt"; then
     printf 'Kernel addresses are masked; matching kernel symbols are needed for offline decoding.\n' >> "$perf_diagnostics"
   fi
-  # Decode while the target namespace and its original libraries still exist.
-  # Raw data and a separate symbol tree also survive profiler container removal.
-  perf script --symfs "$target_root" -i "$perf_data" \
+  # Use regular copied paths, not /proc/PID/root. With a live target namespace,
+  # perf 6.1 can pass the unprefixed DSO path to addr2line; the helper then exits
+  # because that path is absent in the profiler container, causing SIGPIPE.
+  # Keep inline expansion enabled and preserve real symbolization failures.
+  perf script --inline --symfs "$perf_symbols" -i "$perf_data" \
     > "$perf_script" 2>> "$perf_diagnostics"
   /opt/FlameGraph/stackcollapse-perf.pl "$perf_script" > "$folded_output"
   echo "profile.sh: retained $perf_data, $perf_script and $perf_symbols" >&2

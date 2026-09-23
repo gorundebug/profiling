@@ -359,9 +359,13 @@ For each CPU/off-CPU SVG, the collector retains these adjacent artifacts:
 - `.perf.metadata.txt`: kernel, perf version, target PID and recording settings.
 - `.symbolization.log`: decoding warnings and unavailable symbol diagnostics.
 
-The first decoding uses `perf script --symfs /proc/PID/root` while the service
-is alive, so paths resolve against its filesystem rather than the profiler
-image. Copies are made after recording, outside the sampling interval. Keep the
+The collector copies mapped binaries through `/proc/PID/root` while the service
+is alive, then decodes with `perf script --inline --symfs <profile>.symbols`.
+Using regular copied paths also lets perf's addr2line subprocess open the
+correct binaries: perf 6.1 can otherwise pass an unprefixed path from the target
+namespace that does not exist inside the profiler container. Inline expansion
+remains enabled; decoding errors are not ignored.
+Copies are made after recording, outside the sampling interval. Keep the
 exact service image as well: deleted mappings, libraries loaded and unloaded
 inside the recording interval, and absent debug packages cannot always be
 preserved by the mapping snapshots. No debug packages are downloaded implicitly.
@@ -370,7 +374,7 @@ To decode again on a compatible Linux perf installation, use absolute paths:
 
 ```bash
 profile=/absolute/path/cppboost.orderservice.flamegraph.svg
-perf script --symfs "$profile.symbols" -i "$profile.perf.data" \
+perf script --inline --symfs "$profile.symbols" -i "$profile.perf.data" \
   > "$profile.decoded.script"
 ```
 
