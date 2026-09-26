@@ -55,6 +55,7 @@ class LanguageLoggingTest(unittest.TestCase):
             actual = profiling.environment(args, profiling.LANGUAGES[0])
         for name, value in contract.items():
             self.assertEqual(actual[name], value)
+        self.assertEqual(actual["DOCKER_IMAGE_TAG"], "profiling-current")
 
 
 class FakeInspector:

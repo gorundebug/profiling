@@ -479,6 +479,9 @@ def environment(args: argparse.Namespace, language: Language) -> dict[str, str]:
             "PROFILING_SERVICE_CORES": str(args.cores),
             "PROFILING_VUS": str(args.vus),
             "DOCKER_TARGET": "runtime",
+            "DOCKER_IMAGE_TAG": "profiling-" + getattr(
+                args, "graph_profile", "function-call"
+            ),
             "EXAMPLE_PROFILE": getattr(
                 args, "graph_profile", "function-call"
             ),
@@ -874,7 +877,10 @@ def verify_cppboost_release_build(
         return result.stdout.strip()
 
     for service in ("inventoryservice", "orderservice"):
-        image = f"cppboostexample-{service}:local"
+        image = (
+            f"cppboostexample-{service}:"
+            f"{env.get('DOCKER_IMAGE_TAG', 'local')}"
+        )
         build_type = image_label(image, "org.gorundebug.build-type")
         if build_type != "Release":
             raise RuntimeError(
