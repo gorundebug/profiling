@@ -174,6 +174,12 @@ def prepare(source_root: Path, workspace: Path, profile: str) -> None:
     (profile_artifacts / "generation.log").write_text(
         generate_archives(source_root, archive_dir, profile)
     )
+    if profile == "current":
+        base_archives = archive_dir / "function-call"
+        base_archives.mkdir()
+        (profile_artifacts / "generation-function-call.log").write_text(
+            generate_archives(source_root, base_archives, "function-call")
+        )
 
     generated: dict[str, object] = {}
     generated_repositories = set(VARIANTS.values())
@@ -204,9 +210,20 @@ def prepare(source_root: Path, workspace: Path, profile: str) -> None:
             continue
         if source.name in {"cppcoroexample", "cppcoroservicelib"}:
             # The coroutine example is published as an adapted source project.
-            # Preserve the adapted local graph; the runner verifies its profile.
+            # Preserve the async implementation; update only profile-owned
+            # declarations from the canonical C++/Boost archive delta.
             if source.name == "cppcoroexample":
                 copy_example(source, destination)
+                if profile == "current":
+                    run(
+                        ["python3", str(source_root / "servicegen/scripts/cppcoro_profile.py"),
+                         "--base", str(base_archives / "cppboost.zip"),
+                         "--selected", str(archive_dir / "cppboost.zip"),
+                         "--project", str(destination)],
+                        cwd=PROFILING,
+                    )
+                generated["cppcoro-adapted"] = verify_graph(destination, profile)
+                print(f"+ copy adapted cppcoroexample ({profile})", flush=True)
             else:
                 copy_framework(source, destination)
             continue

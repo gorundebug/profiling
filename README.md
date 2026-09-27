@@ -528,6 +528,9 @@ The public runtime is https://github.com/gorundebug/cppcoroservicelib and its
 canonical example is https://github.com/gorundebug/cppcoroexample. Both are
 restored by `quickstart.sh`, alongside the existing Boost repositories.
 They are included in the ordinary runner selection, not an opt-in experiment.
+Both `function-call` and `current` include `cppcoro`. For `current`, profile
+preparation applies the generated graph/config delta to the adapted coroutine
+example while retaining its asynchronous implementation.
 
 The benchmark name is `cpp-coro`; profiling and live conformance use
 `cppcoro`, following their respective existing Boost naming conventions.
@@ -536,8 +539,8 @@ Local development uses the same `DEPENDENCIES_DIR` and
 `DEPENDENCY_PROXY_DIR` options as Boost.
 
 The example contains the adapted coroutine source. The shared generator does
-not yet have a coroutine backend: do not regenerate it with the synchronous
-Boost backend. A requested graph profile must still match the actual graph;
-incompatible profiles are not silently accepted.
+not yet have a full coroutine backend: do not regenerate it with the synchronous
+Boost backend. Profile preparation applies only generated graph/config changes
+to the adapted source and verifies the requested graph.
 
 Run only this variant with `make profile-cppcoro`.
