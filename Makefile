@@ -46,7 +46,7 @@ clean:
 
 dependency-source-cache-invalidate:
 	@set -e; found=0; \
-	for project in .dependencies/cppexample .dependencies/cppboostexample; do \
+	for project in .dependencies/cppexample .dependencies/cppboostexample .dependencies/cppcoroexample; do \
 		if [ -f "$$project/make.generated.mk" ]; then \
 			found=1; $(MAKE) -C "$$project" dependency-source-cache-invalidate; \
 		fi; \
@@ -54,3 +54,7 @@ dependency-source-cache-invalidate:
 	if [ "$$found" -eq 0 ]; then \
 		echo "[dependency-source-cache] no fetched C++ examples; nothing to invalidate"; \
 	fi
+
+.PHONY: profile-cppcoro
+profile-cppcoro:
+	python3 examples/run.py --language cppcoro $(ARGS)

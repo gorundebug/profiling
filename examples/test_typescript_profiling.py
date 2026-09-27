@@ -249,7 +249,7 @@ class TypeScriptProfilingTest(unittest.TestCase):
             set(languages),
             {
                 "go", "go-native", "cpp", "cpp-native", "cppboost",
-                "cppboost-native", "python", "python-native", "rust",
+                "cppboost-native", "cppcoro", "python", "python-native", "rust",
                 "rust-native", "typescript", "typescript-native",
             },
         )

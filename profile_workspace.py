@@ -202,6 +202,14 @@ def prepare(source_root: Path, workspace: Path, profile: str) -> None:
         destination = workspace / source.name
         if destination.exists() or destination.is_symlink():
             continue
+        if source.name in {"cppcoroexample", "cppcoroservicelib"}:
+            # The coroutine example is published as an adapted source project.
+            # Preserve the adapted local graph; the runner verifies its profile.
+            if source.name == "cppcoroexample":
+                copy_example(source, destination)
+            else:
+                copy_framework(source, destination)
+            continue
         if source.name in FRAMEWORK_REPOSITORIES:
             copy_framework(source, destination)
             initialize_git_snapshot(destination, profile)

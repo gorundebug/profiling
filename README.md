@@ -521,3 +521,23 @@ any inherited mask. If capture is unavailable, the report and diagnostic log
 say so and decoding proceeds without guessing a mask. Non-ARM64 targets are not
 ptrace-attached for this purpose. Old recordings without this metadata are not
 silently assigned the mask from the machine doing the analysis.
+
+## C++20 coroutine runtime
+
+The public runtime is https://github.com/gorundebug/cppcoroservicelib and its
+canonical example is https://github.com/gorundebug/cppcoroexample. Both are
+restored by `quickstart.sh`, alongside the existing Boost repositories.
+They are included in the ordinary runner selection, not an opt-in experiment.
+
+The benchmark name is `cpp-coro`; profiling and live conformance use
+`cppcoro`, following their respective existing Boost naming conventions.
+CPU quotas, graph validation, load, telemetry and assertions are unchanged.
+Local development uses the same `DEPENDENCIES_DIR` and
+`DEPENDENCY_PROXY_DIR` options as Boost.
+
+The example contains the adapted coroutine source. The shared generator does
+not yet have a coroutine backend: do not regenerate it with the synchronous
+Boost backend. A requested graph profile must still match the actual graph;
+incompatible profiles are not silently accepted.
+
+Run only this variant with `make profile-cppcoro`.
