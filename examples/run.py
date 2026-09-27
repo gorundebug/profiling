@@ -248,7 +248,7 @@ LANGUAGES = (
         PROFILING_DIR / "compose.go-native.yml", "perf",
         "orderservice", "inventoryservice",
         repository="https://github.com/gorundebug/gonativeexample.git",
-        revision="v0.2.145",
+        revision="v0.2.146",
     ),
     Language("cpp", ROOT / "cppexample", PROFILING_DIR / "compose.cpp.yml", "perf", "example_order_service", "example_inventory_service"),
     Language(
@@ -256,7 +256,7 @@ LANGUAGES = (
         PROFILING_DIR / "compose.cpp-native.yml", "perf",
         "orderservice", "inventoryservice",
         repository="https://github.com/gorundebug/cppnativeexample.git",
-        revision="v0.2.145",
+        revision="v0.2.146",
     ),
     Language("cppboost", ROOT / "cppboostexample", PROFILING_DIR / "compose.cppboost.yml", "perf", "example_order_service", "example_inventory_service"),
     Language("cppcoro", ROOT / "cppcoroexample", PROFILING_DIR / "compose.cppcoro.yml", "perf", "example_order_service", "example_inventory_service"),
@@ -265,7 +265,7 @@ LANGUAGES = (
         PROFILING_DIR / "compose.cppboost-native.yml", "perf",
         "orderservice", "inventoryservice",
         repository="https://github.com/gorundebug/cppboostnativeexample.git",
-        revision="v0.2.145",
+        revision="v0.2.146",
     ),
     Language("python", ROOT / "pyexample", PROFILING_DIR / "compose.python.yml", "pyspy", "order_service.main", "inventory_service.main"),
     Language(
@@ -273,14 +273,14 @@ LANGUAGES = (
         PROFILING_DIR / "compose.python-native.yml", "pyspy",
         "order_service.py", "inventory_service.py",
         repository="https://github.com/gorundebug/pynativeexample.git",
-        revision="v0.2.145",
+        revision="v0.2.146",
     ),
     Language("rust", ROOT / "rustexample", PROFILING_DIR / "compose.rust.yml", "perf", "service", "service"),
     Language(
         "rust-native", ROOT / "rustnativeexample",
         PROFILING_DIR / "compose.rust-native.yml", "perf", "service", "service",
         repository="https://github.com/gorundebug/rustnativeexample.git",
-        revision="v0.2.145",
+        revision="v0.2.146",
     ),
     Language(
         "typescript",
@@ -300,7 +300,7 @@ LANGUAGES = (
         "dist/src/inventory/main.js",
         "dist/src/analytics/main.js",
         repository="https://github.com/gorundebug/tsnativeexample.git",
-        revision="v0.2.145",
+        revision="v0.2.146",
     ),
 )
 
