@@ -305,11 +305,11 @@ class TypeScriptProfilingTest(unittest.TestCase):
             environment = profiling.environment(args, languages[name])
             self.assertEqual(
                 environment["GRPC_SOURCE_CONTEXT"],
-                "https://github.com/grpc/grpc.git#v1.83.1",
+                profiling.cppboost_dependency_context("grpc"),
             )
             self.assertEqual(
                 environment["ASIO_GRPC_SOURCE_CONTEXT"],
-                "https://github.com/Tradias/asio-grpc.git#v3.5.0",
+                profiling.cppboost_dependency_context("asio-grpc"),
             )
 
         with mock.patch.dict(

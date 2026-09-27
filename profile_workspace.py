@@ -223,9 +223,11 @@ def prepare(source_root: Path, workspace: Path, profile: str) -> None:
                         cwd=PROFILING,
                     )
                 generated["cppcoro-adapted"] = verify_graph(destination, profile)
+                initialize_git_snapshot(destination, profile)
                 print(f"+ copy adapted cppcoroexample ({profile})", flush=True)
             else:
                 copy_framework(source, destination)
+                initialize_git_snapshot(destination, profile)
             continue
         if source.name in FRAMEWORK_REPOSITORIES:
             copy_framework(source, destination)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import runpy
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -11,6 +12,48 @@ PROFILING = Path(__file__).resolve().parents[1]
 
 
 class ProfileWorkspaceTest(unittest.TestCase):
+    def test_coroutine_copies_have_git_identity_for_run_manifest(self) -> None:
+        profile = runpy.run_path(str(PROFILING / "profile_workspace.py"))
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source_root = root / "source"
+            source_root.mkdir()
+            for name in ("cppcoroexample", "cppcoroservicelib"):
+                source = source_root / name
+                source.mkdir()
+                (source / "source.txt").write_text(name)
+
+            workspace = root / "workspace"
+            globals_ = profile["prepare"].__globals__
+            with mock.patch.dict(
+                globals_,
+                {
+                    "VARIANTS": {},
+                    "FRAMEWORK_REPOSITORIES": set(),
+                    "generate_archives": lambda *_: "generated",
+                    "verify_graph": lambda *_: {},
+                    "ARTIFACTS": root / "artifacts",
+                },
+            ):
+                profile["prepare"](source_root, workspace, "function-call")
+
+            for name in ("cppcoroexample", "cppcoroservicelib"):
+                copied = workspace / name
+                self.assertTrue((copied / ".git").is_dir())
+                self.assertEqual(
+                    subprocess.check_output(
+                        ["git", "status", "--porcelain", "--untracked-files=no"],
+                        cwd=copied,
+                        text=True,
+                    ),
+                    "",
+                )
+                self.assertTrue(
+                    subprocess.check_output(
+                        ["git", "rev-parse", "HEAD"], cwd=copied, text=True
+                    ).strip()
+                )
+
     def test_copy_preserves_build_prefixed_sources_but_ignores_build_trees(self) -> None:
         profile = runpy.run_path(str(PROFILING / "profile_workspace.py"))
         with tempfile.TemporaryDirectory() as directory:
