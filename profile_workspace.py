@@ -9,6 +9,7 @@ import json
 import os
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 
 
@@ -17,7 +18,7 @@ ARTIFACTS = PROFILING / "examples" / ".artifacts"
 VARIANTS = {
     "go": "goexample",
     "cpp": "cppexample",
-    "cppboost": "cppboostexample",
+    "cppcoro": "cppcoroexample",
     "python": "pyexample",
     "rust": "rustexample",
     "typescript": "tsexample",
@@ -25,7 +26,7 @@ VARIANTS = {
 FRAMEWORK_REPOSITORIES = {
     "servicelib",
     "cppservicelib",
-    "cppboostservicelib",
+    "cppcoroservicelib",
     "pyservicelib",
     "rustservicelib",
     "tsservicelib",
@@ -96,6 +97,9 @@ def generate_archives(source_root: Path, archive_dir: Path, profile: str) -> str
     servicegen = source_root / "servicegen"
     if not servicegen.is_dir():
         raise RuntimeError(f"missing servicegen source: {servicegen}")
+    servicelib = source_root / "servicelib"
+    if not servicelib.is_dir():
+        raise RuntimeError(f"missing local service model API: {servicelib}")
     env = os.environ.copy()
     env.update(
         {
@@ -105,14 +109,22 @@ def generate_archives(source_root: Path, archive_dir: Path, profile: str) -> str
             "GOWORK": "off",
         }
     )
-    return run(
-        [
-            "go", "test", "./cmd/codegenerator", "-run",
-            "^TestWriteCanonicalExampleArchives$", "-count=1", "-v",
-        ],
-        cwd=servicegen,
-        env=env,
-    ).stdout
+    with tempfile.TemporaryDirectory(prefix="profiling-generator-") as directory:
+        workspace = Path(directory)
+        run(
+            ["go", "work", "init", str(servicegen), str(servicelib)],
+            cwd=workspace,
+            env=env,
+        )
+        env["GOWORK"] = str(workspace / "go.work")
+        return run(
+            [
+                "go", "test", "./cmd/codegenerator", "-run",
+                "^TestWriteCanonicalExampleArchives$", "-count=1", "-v",
+            ],
+            cwd=servicegen,
+            env=env,
+        ).stdout
 
 
 def verify_graph(example: Path, profile: str) -> dict[str, int]:
@@ -174,12 +186,6 @@ def prepare(source_root: Path, workspace: Path, profile: str) -> None:
     (profile_artifacts / "generation.log").write_text(
         generate_archives(source_root, archive_dir, profile)
     )
-    if profile == "current":
-        base_archives = archive_dir / "function-call"
-        base_archives.mkdir()
-        (profile_artifacts / "generation-function-call.log").write_text(
-            generate_archives(source_root, base_archives, "function-call")
-        )
 
     generated: dict[str, object] = {}
     generated_repositories = set(VARIANTS.values())
@@ -193,7 +199,7 @@ def prepare(source_root: Path, workspace: Path, profile: str) -> None:
             raise RuntimeError(f"missing generated profile archive: {archive}")
         copy_example(source, destination)
         merged = run(
-            ["bash", "scripts/merge.generated.sh", str(archive)],
+            ["bash", "scripts/merge.generated.sh", "--remove-stale", str(archive)],
             cwd=destination,
         )
         (profile_artifacts / f"merge-{language}.log").write_text(merged.stdout)
@@ -203,31 +209,14 @@ def prepare(source_root: Path, workspace: Path, profile: str) -> None:
     # Frameworks and native baselines remain exact source checkouts. Only the
     # six generated framework examples differ between profiling modes.
     for source in source_root.iterdir():
-        if source.name in generated_repositories or source.name.startswith("."):
+        if (
+            source.name in generated_repositories
+            or source.name in {"cppboostexample", "cppboostservicelib"}
+            or source.name.startswith(".")
+        ):
             continue
         destination = workspace / source.name
         if destination.exists() or destination.is_symlink():
-            continue
-        if source.name in {"cppcoroexample", "cppcoroservicelib"}:
-            # The coroutine example is published as an adapted source project.
-            # Preserve the async implementation; update only profile-owned
-            # declarations from the canonical C++/Boost archive delta.
-            if source.name == "cppcoroexample":
-                copy_example(source, destination)
-                if profile == "current":
-                    run(
-                        ["python3", str(source_root / "servicegen/scripts/cppcoro_profile.py"),
-                         "--base", str(base_archives / "cppboost.zip"),
-                         "--selected", str(archive_dir / "cppboost.zip"),
-                         "--project", str(destination)],
-                        cwd=PROFILING,
-                    )
-                generated["cppcoro-adapted"] = verify_graph(destination, profile)
-                initialize_git_snapshot(destination, profile)
-                print(f"+ copy adapted cppcoroexample ({profile})", flush=True)
-            else:
-                copy_framework(source, destination)
-                initialize_git_snapshot(destination, profile)
             continue
         if source.name in FRAMEWORK_REPOSITORIES:
             copy_framework(source, destination)

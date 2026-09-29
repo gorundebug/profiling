@@ -46,7 +46,7 @@ clean:
 
 dependency-source-cache-invalidate:
 	@set -e; found=0; \
-	for project in .dependencies/cppexample .dependencies/cppboostexample .dependencies/cppcoroexample; do \
+	for project in .dependencies/cppexample .dependencies/cppcoroexample; do \
 		if [ -f "$$project/make.generated.mk" ]; then \
 			found=1; $(MAKE) -C "$$project" dependency-source-cache-invalidate; \
 		fi; \

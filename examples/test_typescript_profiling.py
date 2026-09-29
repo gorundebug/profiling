@@ -207,18 +207,18 @@ class TypeScriptProfilingTest(unittest.TestCase):
             f"image: {expected}redpandadata/redpanda:v24.2.5", native
         )
 
-    def test_cppboost_release_validation_uses_built_local_images(self) -> None:
+    def test_coro_release_validation_uses_built_local_images(self) -> None:
         completed = mock.Mock(returncode=0, stdout="Release\n")
         with mock.patch.object(profiling, "run", return_value=completed) as run:
-            profiling.verify_cppboost_release_build(
+            profiling.verify_coro_release_build(
                 {}, require_coroutine_diagnostics=False
             )
         inspected = [call.args[0][-1] for call in run.call_args_list]
         self.assertEqual(
             inspected,
             [
-                "cppboostexample-inventoryservice:local",
-                "cppboostexample-orderservice:local",
+                "cppcoroexample-inventoryservice:local",
+                "cppcoroexample-orderservice:local",
             ],
         )
 
@@ -248,7 +248,7 @@ class TypeScriptProfilingTest(unittest.TestCase):
         self.assertEqual(
             set(languages),
             {
-                "go", "go-native", "cpp", "cpp-native", "cppboost",
+                "go", "go-native", "cpp", "cpp-native",
                 "cppboost-native", "cppcoro", "python", "python-native", "rust",
                 "rust-native", "typescript", "typescript-native",
             },
@@ -292,7 +292,7 @@ class TypeScriptProfilingTest(unittest.TestCase):
             self.assertEqual(environment[name], "1")
         self.assertEqual(environment["PROFILING_PYSPY_RATE"], "100")
 
-    def test_boost_uses_pinned_dependency_contexts(self) -> None:
+    def test_coro_and_native_use_pinned_dependency_contexts(self) -> None:
         languages = {language.name: language for language in profiling.LANGUAGES}
         args = argparse.Namespace(
             cores=2,
@@ -301,15 +301,15 @@ class TypeScriptProfilingTest(unittest.TestCase):
             loadgen_cores=6,
             vus=256,
         )
-        for name in ("cppboost", "cppboost-native"):
+        for name in ("cppcoro", "cppboost-native"):
             environment = profiling.environment(args, languages[name])
             self.assertEqual(
                 environment["GRPC_SOURCE_CONTEXT"],
-                profiling.cppboost_dependency_context("grpc"),
+                profiling.cpp_dependency_context("grpc"),
             )
             self.assertEqual(
                 environment["ASIO_GRPC_SOURCE_CONTEXT"],
-                profiling.cppboost_dependency_context("asio-grpc"),
+                profiling.cpp_dependency_context("asio-grpc"),
             )
 
         with mock.patch.dict(
@@ -320,7 +320,7 @@ class TypeScriptProfilingTest(unittest.TestCase):
             },
             clear=False,
         ):
-            environment = profiling.environment(args, languages["cppboost"])
+            environment = profiling.environment(args, languages["cppcoro"])
         self.assertEqual(
             environment["GRPC_SOURCE_CONTEXT"], "/cache/grpc-src"
         )

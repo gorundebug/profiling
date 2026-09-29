@@ -25,12 +25,24 @@ class ProfileWorkspaceTest(unittest.TestCase):
 
             workspace = root / "workspace"
             globals_ = profile["prepare"].__globals__
+            original_run = globals_["run"]
+
+            def generate_archives(source_root, archive_dir, selected_profile):
+                (archive_dir / "cppcoro.zip").write_bytes(b"fixture archive")
+                return "generated"
+
+            def run_with_mock_merge(command, **kwargs):
+                if command[:2] == ["bash", "scripts/merge.generated.sh"]:
+                    self.assertEqual(Path(command[-1]).name, "cppcoro.zip")
+                    return subprocess.CompletedProcess(command, 0, stdout="merged")
+                return original_run(command, **kwargs)
             with mock.patch.dict(
                 globals_,
                 {
-                    "VARIANTS": {},
-                    "FRAMEWORK_REPOSITORIES": set(),
-                    "generate_archives": lambda *_: "generated",
+                    "VARIANTS": {"cppcoro": "cppcoroexample"},
+                    "FRAMEWORK_REPOSITORIES": {"cppcoroservicelib"},
+                    "generate_archives": generate_archives,
+                    "run": run_with_mock_merge,
                     "verify_graph": lambda *_: {},
                     "ARTIFACTS": root / "artifacts",
                 },
@@ -76,6 +88,8 @@ class ProfileWorkspaceTest(unittest.TestCase):
             root = Path(directory)
             servicegen = root / "servicegen"
             servicegen.mkdir()
+            servicelib = root / "servicelib"
+            servicelib.mkdir()
             archive_dir = root / "archives"
             with mock.patch.object(profile["subprocess"], "run") as run:
                 run.return_value.stdout = "generated"
@@ -86,6 +100,11 @@ class ProfileWorkspaceTest(unittest.TestCase):
             environment = run.call_args.kwargs["env"]
             self.assertEqual(environment["EXAMPLE_PROFILE"], "current")
             self.assertNotIn("SERVICEGEN_EXAMPLE_PROFILE", environment)
+            self.assertEqual(
+                run.call_args_list[0].args[0],
+                ["go", "work", "init", str(servicegen), str(servicelib)],
+            )
+            self.assertNotEqual(environment["GOWORK"], "off")
 
     def test_dependency_proxy_contract_has_no_generator_namespace(self) -> None:
         forbidden = "SERVICE" + "GEN_"

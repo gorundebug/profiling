@@ -120,7 +120,7 @@ clean-machine profile does not silently change when a native repository's
 ```bash
 ./quickstart.sh -- --language rust --duration 20s
 ./quickstart.sh -- --language cpp-native --duration 20s
-./quickstart.sh -- --language cppboost --duration 20s
+./quickstart.sh -- --language cppcoro --duration 20s
 ./quickstart.sh -- --language cppboost-native --duration 20s
 ./quickstart.sh -- --language typescript --language typescript-native --duration 20s
 ```
@@ -168,7 +168,7 @@ To reuse an existing set of repositories instead of `.dependencies`, pass it
 explicitly:
 
 ```bash
-./quickstart.sh --dependencies-dir /path/to/repos -- --language cppboost
+./quickstart.sh --dependencies-dir /path/to/repos -- --language cppcoro
 ```
 
 A direct `make profile` from the common development workspace remains
@@ -188,7 +188,7 @@ make dependency-source-cache-invalidate
 make profile
 # or directly:
 python3 examples/run.py --language rust --duration 20s
-python3 examples/run.py --language cppboost --language cppboost-native \
+python3 examples/run.py --language cppcoro --language cppboost-native \
   --profile-kind allocation --profile-kind scheduler \
   --profile-kind offcpu --duration 20s
 ```
@@ -257,7 +257,7 @@ If the host kernel denies `perf` attachment, prepare a dedicated profiling
 host explicitly:
 
 ```bash
-python3 examples/run.py --prepare-host-profiling --language cppboost
+python3 examples/run.py --prepare-host-profiling --language cppcoro
 ```
 
 Flamegraphs are written to
@@ -322,9 +322,9 @@ k6 has drained its scenario-specific grace window, so the raw CPU profile covers
 the same accepted request window rather than silently ending before slow
 timeout responses complete.
 
-When `PROFILING_NOOP_METRICS=0`, `cppboost` profiling additionally scrapes the
+When `PROFILING_NOOP_METRICS=0`, `cppcoro` profiling additionally scrapes the
 service while load is active and writes
-`.artifacts/cppboost.<service>.runtime-metrics.json`. Each timestamped sample
+`.artifacts/cppcoro.<service>.runtime-metrics.json`. Each timestamped sample
 contains `runtime_active_work`, `runtime_worker_utilization` and
 `runtime_event_loop_lag_seconds`. Use this time series together with the
 flamegraph and load-generator JSON to distinguish CPU saturation from an idle
@@ -361,14 +361,14 @@ rebuilding the profiler:
 
 ```bash
 docker build -f examples/Dockerfile.profiler -t servicelib-profiler:local examples
-python3 examples/run.py --language cppboost --skip-build --duration 20s
+python3 examples/run.py --language cppcoro --skip-build --duration 20s
 ```
 
 DWARF sampling costs CPU and disk space. For a lower-overhead diagnostic run:
 
 ```bash
 PROFILING_PERF_FREQUENCY=99 PROFILING_PERF_CALL_GRAPH=dwarf,16384 \
-  python3 examples/run.py --language cppboost --duration 20s
+  python3 examples/run.py --language cppcoro --duration 20s
 ```
 
 Do not compare throughput from differently sampled runs as a runtime speedup.
@@ -430,7 +430,7 @@ truncation and increase profiling overhead.
 To decode again on a compatible Linux perf installation, use absolute paths:
 
 ```bash
-profile=/absolute/path/cppboost.orderservice.flamegraph.svg
+profile=/absolute/path/cppcoro.orderservice.flamegraph.svg
 PERF_SYMBOL_ROOT="$profile.symbols" \
   PATH="/usr/local/lib/perf-symbolizer:$PATH" \
   python3 /usr/local/bin/capture_perf_pac.py decode \
@@ -526,11 +526,11 @@ silently assigned the mask from the machine doing the analysis.
 
 The public runtime is https://github.com/gorundebug/cppcoroservicelib and its
 canonical example is https://github.com/gorundebug/cppcoroexample. Both are
-restored by `quickstart.sh`, alongside the existing Boost repositories.
+restored by `quickstart.sh` as the supported Coro runtime and example.
 They are included in the ordinary runner selection, not an opt-in experiment.
-Both `function-call` and `current` include `cppcoro`. For `current`, profile
-preparation applies the generated graph/config delta to the adapted coroutine
-example while retaining its asynchronous implementation.
+Both `function-call` and `current` include `cppcoro`. Profile preparation merges
+the generator's own `cppcoro.zip`, preserving user-owned business code, and
+validates the selected graph. No synchronous Boost archive adaptation is used.
 
 The benchmark name is `cpp-coro`; profiling and live conformance use
 `cppcoro`, following their respective existing Boost naming conventions.
@@ -538,9 +538,8 @@ CPU quotas, graph validation, load, telemetry and assertions are unchanged.
 Local development uses the same `DEPENDENCIES_DIR` and
 `DEPENDENCY_PROXY_DIR` options as Boost.
 
-The example contains the adapted coroutine source. The shared generator does
-not yet have a full coroutine backend: do not regenerate it with the synchronous
-Boost backend. Profile preparation applies only generated graph/config changes
-to the adapted source and verifies the requested graph.
+The model language is `cppCoro`. Generation/build independently select the
+static/dynamic graph and `epoll`/`uring` I/O backend; `epoll` is the default.
+The removed `cppBoost` model is rejected rather than silently changing its API.
 
 Run only this variant with `make profile-cppcoro`.

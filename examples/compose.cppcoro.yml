@@ -22,7 +22,7 @@ services:
       - --workers
       - ${PROFILING_SERVICE_CORES}
     volumes:
-      - ${PROFILING_CPPBOOST_CONFIG_DIR}:/profiling-config:ro
+      - ${PROFILING_CPPCORO_CONFIG_DIR}:/profiling-config:ro
 
   orderservice:
     environment: !override
@@ -50,4 +50,4 @@ services:
       - --workers
       - ${PROFILING_SERVICE_CORES}
     volumes:
-      - ${PROFILING_CPPBOOST_CONFIG_DIR}:/profiling-config:ro
+      - ${PROFILING_CPPCORO_CONFIG_DIR}:/profiling-config:ro
