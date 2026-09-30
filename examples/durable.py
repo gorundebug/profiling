@@ -17,8 +17,9 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import dependency_command
 from run import acquire_tooling_lock, build_profiler_image
+
+import dependency_command
 
 
 HERE = Path(__file__).resolve().parent

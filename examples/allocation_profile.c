@@ -1,5 +1,7 @@
 #define _GNU_SOURCE
 
+#include <unistd.h>
+
 #include <errno.h>
 #include <dlfcn.h>
 #include <execinfo.h>
@@ -10,7 +12,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 // Linux allocation instrumentation used by the Docker profiling image. It is
 // intentionally not linked into production binaries. Allocation calls are

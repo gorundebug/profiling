@@ -23,8 +23,9 @@ from pathlib import Path
 from typing import Any, Callable, TextIO
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import dependency_command
 from content_identity import content_source_identity
+
+import dependency_command
 
 PROFILING_DIR = Path(__file__).resolve().parent
 PROFILING_ROOT = PROFILING_DIR.parent
